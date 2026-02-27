@@ -434,7 +434,7 @@
   <script>
     const API = (window.location.origin && window.location.origin !== 'null' && window.location.origin !== 'file://') ? window.location.origin : 'http://localhost:5000';
     if ('serviceWorker' in navigator) {
-      navigator.serviceWorker.register('/sw.js').catch(() => {});
+      navigator.serviceWorker.register('/sw.js?v=2').catch(() => {});
     }
     var deferredInstallPrompt = null;
     window.addEventListener('beforeinstallprompt', (e) => {
@@ -703,8 +703,6 @@
         if (String(userId) === String(user?._id)) {
           if (profileImage !== undefined) user.profileImage = profileImage;
           safeStorage.setItem('chat_user', JSON.stringify(user));
-          const modal = document.getElementById('settingsModal');
-          if (modal && modal.classList.contains('show')) showSettingsModal();
         }
         const hasConv = conversations.some(c => (c.participants || []).some(p => String(p._id || p) === userId));
         if (hasConv) { await loadConversations(); if (currentChatOtherUserId === userId) updateHeaderAvatarFromConv(); }
@@ -936,13 +934,22 @@
       const av = document.getElementById('settingsAvatar');
       const fallback = (user?.name?.[0] || user?.phone?.[0] || '?').toUpperCase();
       av.dataset.fallback = fallback;
+      av.style.background = user?.profileImage ? 'none' : '#075e54';
+      av.innerHTML = '';
       if (user?.profileImage) {
-        av.style.background = 'none';
         const src = buildProfileImageSrc(user.profileImage, true);
-        av.innerHTML = '<img src="'+src+'" alt="" style="width:100%;height:100%;object-fit:cover" onerror="var p=this.parentElement;if(p)p.innerHTML=p.dataset.fallback||\'?\';p.style.background=\'#075e54\'">';
+        const img = document.createElement('img');
+        img.src = src;
+        img.alt = '';
+        img.style.cssText = 'width:100%;height:100%;object-fit:cover';
+        img.referrerPolicy = 'no-referrer';
+        img.onerror = function() {
+          av.innerHTML = fallback;
+          av.style.background = '#075e54';
+        };
+        av.appendChild(img);
       } else {
-        av.style.background = '#075e54';
-        av.innerHTML = fallback;
+        av.textContent = fallback;
       }
       const th = safeStorage.getItem('theme') || user?.themePreference || 'light';
       document.querySelectorAll('.theme-btn').forEach(b => { b.style.opacity = b.dataset.theme === th ? '1' : '0.5'; });
