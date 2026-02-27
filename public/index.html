@@ -87,8 +87,10 @@
     .call-modal.show { display: flex; }
     .call-modal .video-container { display: flex; gap: 12px; flex-wrap: wrap; justify-content: center; max-width: 100%; }
     .call-modal video { width: 200px; height: 150px; min-width: 160px; min-height: 120px; background: #000; border-radius: 8px; object-fit: contain; }
-    .call-modal .call-actions { margin-top: 24px; display: flex; gap: 16px; }
+    .call-modal .call-actions { margin-top: 24px; display: flex; gap: 16px; flex-wrap: wrap; justify-content: center; }
     .call-modal .call-btn { width: 56px; height: 56px; border-radius: 50%; border: none; cursor: pointer; font-size: 24px; }
+    .call-modal .video-container { position: relative; }
+    .call-modal #remoteVideo.remote-fullscreen { position: fixed !important; inset: 0 !important; width: 100vw !important; height: 100vh !important; z-index: 201; object-fit: contain; background: #000; min-width: unset; min-height: unset; cursor: pointer; }
     .call-modal .hangup { background: #d32f2f; color: #fff; }
     .call-modal .accept { background: #25d366; color: #fff; }
     .call-modal .reject { background: #d32f2f; color: #fff; }
@@ -225,8 +227,10 @@
 
   <div id="newChatModal" class="modal" onclick="if(event.target===this)this.classList.remove('show')">
     <div class="modal-content">
-      <div class="modal-header"><h3>ابحث برقم الموبايل</h3><span class="modal-close" onclick="document.getElementById('newChatModal').classList.remove('show')">✕</span></div>
-      <input type="text" id="searchPhone" placeholder="رقم صديقك (مثل: 2222222222)" oninput="searchUsers()">
+      <div class="modal-header"><h3>محادثة جديدة</h3><span class="modal-close" onclick="document.getElementById('newChatModal').classList.remove('show')">✕</span></div>
+      <input type="text" id="searchPhone" placeholder="اكتب رقم الموبايل (مثل: 01229084204)" oninput="searchUsers()">
+      <p style="font-size:12px;color:#666;margin:8px 0">أو اختر من جهات الاتصال (يظهر من هم مسجلون فقط)</p>
+      <button type="button" class="new-chat-btn" style="margin:12px 0;background:#075e54" onclick="pickFromContacts()">📇 اختر من جهات الاتصال</button>
       <div id="searchResults"></div>
     </div>
   </div>
@@ -310,6 +314,7 @@
           <button type="button" class="theme-btn" data-theme="dark" onclick="setTheme('dark')">🌙 داكن</button>
         </div>
       </div>
+      <button class="new-chat-btn" onclick="syncContactsFromPhone()" style="margin-bottom:8px">📇 ربط أسماء من جهات الاتصال</button>
       <button class="new-chat-btn" onclick="showStarredModal()" style="margin-bottom:8px">⭐ الرسائل المفضلة</button>
       <button class="new-chat-btn" onclick="showBlockedList()" style="margin-bottom:8px">قائمة المحظورين</button>
       <button class="new-chat-btn" onclick="exportBackup()" style="background:#075e54">تصدير نسخة احتياطية</button>
@@ -403,10 +408,11 @@
     <div id="callState">-</div>
     <div class="video-container">
       <video id="localVideo" autoplay muted playsinline></video>
-      <video id="remoteVideo" autoplay playsinline></video>
+      <video id="remoteVideo" autoplay playsinline onclick="toggleRemoteFullscreen()" title="اضغط لتكبير/تصغير فيديو الصديق"></video>
       <audio id="remoteAudio" autoplay playsinline style="position:absolute;opacity:0;pointer-events:none;width:0;height:0"></audio>
     </div>
     <div class="call-actions">
+      <button id="fullscreenBtn" class="call-btn" style="display:none;background:#2196f3;color:#fff;width:64px;height:64px;font-size:28px" onclick="toggleRemoteFullscreen()" title="تكبير فيديو الصديق لرؤية أوضح">⛶</button>
       <button id="answerBtn" class="call-btn accept" style="display:none" onclick="answerCall()">✓</button>
       <button id="rejectBtn" class="call-btn reject" onclick="endCall()">✕</button>
       <button id="hangupBtn" class="call-btn hangup" style="display:none" onclick="endCall()">📵</button>
@@ -509,6 +515,26 @@
       return data;
     }
 
+    function normalizePhone(p) {
+      return String(p||'').replace(/\D/g,'').replace(/^0+/,'').slice(-10);
+    }
+    function getContactDisplayName(phone) {
+      try {
+        const j = safeStorage.getItem('chat_contacts');
+        const map = j ? JSON.parse(j) : {};
+        const k = normalizePhone(phone);
+        return map[k] || null;
+      } catch(_){ return null; }
+    }
+    function saveContactName(phone, name) {
+      try {
+        const j = safeStorage.getItem('chat_contacts') || '{}';
+        const map = JSON.parse(j);
+        map[normalizePhone(phone)] = name;
+        safeStorage.setItem('chat_contacts', JSON.stringify(map));
+      } catch(_){}
+    }
+
     function getMediaType(mime) {
       if (!mime) return 'file';
       if (mime.startsWith('image/')) return 'image';
@@ -531,7 +557,9 @@
         });
         const data = await res.json().catch(() => ({}));
         if (!res.ok) {
-          throw new Error(data.message || (res.status === 401 ? 'غير مصرح' : res.status === 403 ? 'محظور' : 'خطأ في الاتصال'));
+          const err = new Error(data.message || (res.status === 401 ? 'غير مصرح' : res.status === 403 ? 'محظور' : 'خطأ في الاتصال'));
+          err.needsApproval = data.needsApproval;
+          throw err;
         }
         const payload = data.data || data;
         if (!payload || !payload.token || !payload.user) {
@@ -553,6 +581,10 @@
         connectSocket();
       } catch (e) {
         const msg = e.message || String(e);
+        if (e.needsApproval || msg.includes('بانتظار الموافقة')) {
+          errEl.textContent = 'حسابك بانتظار موافقة الأدمن. تواصل مع الأدمن للموافقة.';
+          return;
+        }
         errEl.textContent = msg.includes('fetch') || msg.includes('Network') ? 'تعذر الاتصال بالسيرفر - تأكد أنه يعمل' : msg;
       }
     }
@@ -597,6 +629,7 @@
         callState = 'in_call';
         document.getElementById('callState').textContent = 'متصل';
         document.getElementById('rejectBtn').style.display = 'none';
+        document.getElementById('fullscreenBtn').style.display = callVideo ? 'inline-block' : 'none';
         setupPeerAsCaller(calleeUserId);
       });
       socket.on('call_rejected', () => { resetCall(); });
@@ -1325,7 +1358,8 @@
       el.innerHTML = conversations.map(c => {
         const isGroup = c.type === 'group';
         const otherP = (c.participants || []).find(p => String(p._id||p) !== String(user._id||user));
-        const name = isGroup ? (c.name || 'مجموعة') : ((otherP?.name && otherP.name !== 'New User') ? otherP.name : otherP?.phone || (c.participants || [])[0]?.phone || 'مستخدم');
+        const contactName = !isGroup && otherP?.phone ? getContactDisplayName(otherP.phone) : null;
+        const name = isGroup ? (c.name || 'مجموعة') : (contactName || ((otherP?.name && otherP.name !== 'New User') ? otherP.name : null) || otherP?.phone || (c.participants || [])[0]?.phone || 'مستخدم');
         const displayName = (name || '?').replace(/'/g,"\\'");
         const active = currentConvId === c._id ? ' active' : '';
         const otherId = otherP ? String(otherP._id || otherP) : '';
@@ -1609,6 +1643,7 @@
       callState = 'in_call';
       document.getElementById('answerBtn').style.display = 'none';
       document.getElementById('hangupBtn').style.display = 'inline-block';
+      document.getElementById('fullscreenBtn').style.display = window._incomingCallVideo !== false ? 'inline-block' : 'none';
       document.getElementById('callState').textContent = 'جاري الاتصال...';
     }
     function endCall() {
@@ -1618,7 +1653,22 @@
       }
       resetCall();
     }
+    let remoteVideoFullscreen = false;
+    function toggleRemoteFullscreen() {
+      if (!callVideo) return;
+      const v = document.getElementById('remoteVideo');
+      if (!v || !v.srcObject) return;
+      remoteVideoFullscreen = !remoteVideoFullscreen;
+      v.classList.toggle('remote-fullscreen', remoteVideoFullscreen);
+      const btn = document.getElementById('fullscreenBtn');
+      btn.style.display = remoteVideoFullscreen ? 'none' : 'inline-block';
+      btn.textContent = remoteVideoFullscreen ? '⤢' : '⛶';
+      btn.title = remoteVideoFullscreen ? 'تصغير' : 'تكبير فيديو الصديق لرؤية أوضح';
+    }
     function resetCall() {
+      remoteVideoFullscreen = false;
+      document.getElementById('remoteVideo').classList.remove('remote-fullscreen');
+      document.getElementById('fullscreenBtn').style.display = 'none';
       document.getElementById('callModal').classList.remove('show');
       if (localStream) localStream.getTracks().forEach(t => t.stop()); localStream = null;
       if (peerConnection) peerConnection.close(); peerConnection = null;
@@ -1730,19 +1780,93 @@
       document.getElementById('searchResults').innerHTML = '';
     }
 
+    async function syncContactsFromPhone() {
+      if (!('contacts' in navigator) || !('ContactsManager' in window)) {
+        alert('ميزة جهات الاتصال تحتاج Chrome على أندرويد. يمكنك استخدام "اختر من جهات الاتصال" عند فتح محادثة جديدة.');
+        return;
+      }
+      try {
+        const contacts = await navigator.contacts.select(['name','tel'], { multiple: true });
+        if (!contacts.length) return;
+        let saved = 0;
+        for (const c of contacts) {
+          const contactName = (Array.isArray(c.name) ? c.name.join(' ') : c.name) || '';
+          const tels = Array.isArray(c.tel) ? c.tel : (c.tel ? [c.tel] : []);
+          for (const t of tels) {
+            const ph = String(t).replace(/\D/g,'');
+            if (ph.length < 8) continue;
+            try {
+              const { registered, user: u } = await api('/api/users/check-phone?phone=' + encodeURIComponent(ph));
+              if (registered && u) { saveContactName(u.phone, contactName || u.name || u.phone); saved++; }
+            } catch(_){}
+          }
+        }
+        document.getElementById('settingsModal').classList.remove('show');
+        alert('تم ربط ' + saved + ' جهة اتصال');
+        renderConvList();
+      } catch (e) {
+        if (e.name === 'SecurityError' || e.message?.includes('denied')) return;
+        alert('فشل: ' + (e.message || 'الوصول لجهات الاتصال'));
+      }
+    }
+
+    async function pickFromContacts() {
+      if (!('contacts' in navigator) || !('ContactsManager' in window)) {
+        alert('ميزة جهات الاتصال غير مدعومة في هذا المتصفح. استخدم Chrome على أندرويد أو اكتب الرقم يدوياً.');
+        return;
+      }
+      try {
+        const contacts = await navigator.contacts.select(['name','tel'], { multiple: true });
+        if (!contacts.length) return;
+        const el = document.getElementById('searchResults');
+        el.innerHTML = '<div style="padding:12px;color:#666">جاري التحقق...</div>';
+        let found = [];
+        for (const c of contacts) {
+          const contactName = (Array.isArray(c.name) ? c.name.join(' ') : c.name) || '';
+          const tels = Array.isArray(c.tel) ? c.tel : (c.tel ? [c.tel] : []);
+          for (const t of tels) {
+            const ph = String(t).replace(/\D/g,'');
+            if (ph.length < 8) continue;
+            try {
+              const { registered, user: u } = await api('/api/users/check-phone?phone=' + encodeURIComponent(ph));
+              if (registered && u) {
+                saveContactName(u.phone, contactName || u.name || u.phone);
+                found.push({ ...u, displayName: contactName || u.name || u.phone });
+              }
+            } catch(_){}
+          }
+        }
+        if (!found.length) {
+          el.innerHTML = '<div style="padding:12px;color:#d32f2f">لا يوجد من جهات الاتصال مسجل في البرنامج</div>';
+          return;
+        }
+        const seen = new Set();
+        el.innerHTML = found.filter(u => !seen.has(u._id) && seen.add(u._id)).map(u => `
+          <div class="search-result" onclick="startConv('${u._id}','${(u.displayName || u.name || u.phone || 'مستخدم').replace(/'/g,"\\'")}')">
+            <div class="avatar" style="width:40px;height:40px;font-size:16px">${(u.displayName || u.name || u.phone || '?')[0].toUpperCase()}</div>
+            <div><strong>${u.displayName || u.name || '-'}</strong><br><small>${u.phone}</small></div>
+          </div>
+        `).join('');
+      } catch (e) {
+        if (e.name === 'SecurityError' || e.message?.includes('denied')) return;
+        document.getElementById('searchResults').innerHTML = '<div class="err">' + (e.message || 'فشل الوصول لجهات الاتصال') + '</div>';
+      }
+    }
+
     async function searchUsers() {
       const q = document.getElementById('searchPhone').value.trim();
       if (!q) { document.getElementById('searchResults').innerHTML = ''; return; }
       try {
         const { users } = await api('/api/users/search?phone=' + encodeURIComponent(q));
         const el = document.getElementById('searchResults');
-        if (!users?.length) { el.innerHTML = '<div style="padding:12px;color:#999">لا توجد نتائج</div>'; return; }
-        el.innerHTML = users.map(u => `
-          <div class="search-result" onclick="startConv('${u._id}','${(u.name || u.phone || 'مستخدم').replace(/'/g,"\\'")}')">
-            <div class="avatar" style="width:40px;height:40px;font-size:16px">${(u.name || u.phone || '?')[0].toUpperCase()}</div>
-            <div><strong>${u.name || '-'}</strong><br><small>${u.phone}</small></div>
-          </div>
-        `).join('');
+        if (!users?.length) { el.innerHTML = '<div style="padding:12px;color:#d32f2f">هذا الرقم غير مسجل في البرنامج</div>'; return; }
+        el.innerHTML = users.map(u => {
+          const disp = getContactDisplayName(u.phone) || u.name || u.phone || 'مستخدم';
+          return `<div class="search-result" onclick="startConv('${u._id}','${disp.replace(/'/g,"\\'")}')">
+            <div class="avatar" style="width:40px;height:40px;font-size:16px">${(disp||'?')[0].toUpperCase()}</div>
+            <div><strong>${disp || '-'}</strong><br><small>${u.phone}</small></div>
+          </div>`;
+        }).join('');
       } catch (e) {
         document.getElementById('searchResults').innerHTML = '<div class="err">' + e.message + '</div>';
       }

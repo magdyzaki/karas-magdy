@@ -78,7 +78,8 @@
           localStorage.setItem('chat_user', JSON.stringify(data.data.user));
           location.href = '/';
         } else {
-          document.getElementById('err').textContent = data.message || 'فشل';
+          const msg = data.needsApproval ? 'حسابك بانتظار موافقة الأدمن. تواصل مع الأدمن للموافقة.' : (data.message || 'فشل');
+          document.getElementById('err').textContent = msg;
         }
       } catch (e) {
         document.getElementById('err').textContent = 'خطأ في الاتصال';

@@ -2,6 +2,30 @@ const User = require("./user.model");
 const Conversation = require("../conversation/conversation.model");
 const Message = require("../message/message.model");
 
+const normalizePhone = (p) => String(p || "").replace(/\D/g, "").replace(/^0+/, "").slice(-10);
+
+const checkPhoneRegistered = async (req, res) => {
+  try {
+    const { phone } = req.query;
+    if (!phone) return res.status(400).json({ success: false, registered: false });
+    const normalized = normalizePhone(phone);
+    const u = await User.findOne({
+      phone: { $regex: new RegExp(normalized + "$"), $options: "i" },
+      isBanned: false,
+      isApproved: true,
+    })
+      .select("_id name phone profileImage")
+      .lean();
+    if (!u) return res.json({ success: true, registered: false });
+    const me = await User.findById(req.user._id).select("blockedUsers");
+    const blocked = [...(me.blockedUsers || [])].map((id) => id.toString());
+    if (blocked.includes(u._id.toString())) return res.json({ success: true, registered: false });
+    res.json({ success: true, registered: true, user: u });
+  } catch (err) {
+    res.status(500).json({ success: false, registered: false, message: err.message });
+  }
+};
+
 const searchUsers = async (req, res) => {
   try {
     const { phone } = req.query;
@@ -227,6 +251,7 @@ const togglePinConversation = async (req, res) => {
 };
 
 module.exports = {
+  checkPhoneRegistered,
   searchUsers,
   updateProfile,
   blockUser,

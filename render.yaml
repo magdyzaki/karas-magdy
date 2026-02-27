@@ -18,6 +18,6 @@ services:
       - key: HTTPS
         value: "false"
       - key: APPROVAL_MODE
-        value: "false"
+        value: "true"
       - key: ADMIN_PHONES
         sync: false

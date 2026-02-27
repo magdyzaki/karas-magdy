@@ -3,6 +3,7 @@ const router = express.Router();
 
 const protect = require("../../middleware/auth.middleware");
 const {
+  checkPhoneRegistered,
   searchUsers,
   updateProfile,
   blockUser,
@@ -15,6 +16,7 @@ const {
   toggleMuteConversation,
 } = require("./user.controller");
 
+router.get("/check-phone", protect, checkPhoneRegistered);
 router.get("/search", protect, searchUsers);
 router.put("/profile", protect, updateProfile);
 router.get("/starred-ids", protect, getStarredIds);
