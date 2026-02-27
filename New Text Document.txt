@@ -1,0 +1,14 @@
+
+Cloud name	
+deokxfrrw
+
+
+API key	
+931177638741781
+
+
+API secret	
+V_yFbrz2ZsbSiocbMYiT6NMFI24
+
+API environment variable	
+CLOUDINARY_URL=cloudinary://931177638741781:V_yFbrz2ZsbSiocbMYiT6NMFI24@deokxfrrw
