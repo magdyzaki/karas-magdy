@@ -313,7 +313,7 @@
         <label style="font-size:12px;color:#8696a0">نبذة</label>
         <input type="text" id="settingsAbout" placeholder="نبذة عنك">
       </div>
-      <button type="button" onclick="saveProfileSettings()" style="margin-bottom:12px;padding:8px 16px;background:#25d366;color:#fff;border:none;border-radius:6px;cursor:pointer">حفظ البروفايل</button>
+      <button type="button" id="saveProfileBtn" onclick="saveProfileSettings()" style="margin-bottom:12px;padding:8px 16px;background:#25d366;color:#fff;border:none;border-radius:6px;cursor:pointer">حفظ البروفايل</button>
       <div style="margin-bottom:12px;padding:10px;background:rgba(0,0,0,0.1);border-radius:6px;font-size:13px">
         <span style="color:#8696a0">معرف المستخدم:</span> <span id="settingsUserId" style="word-break:break-all"></span>
       </div>
@@ -941,30 +941,43 @@
       if (!file) return;
       const btn = e.target.closest('div')?.querySelector('button');
       const origText = btn?.textContent;
-      if (btn) btn.textContent = 'جاري الرفع...';
+      if (btn) { btn.textContent = 'جاري الرفع...'; btn.disabled = true; }
       const fd = new FormData();
       fd.append('file', file);
       try {
-        const res = await api('/api/upload', { method: 'POST', body: fd });
+        const ctrl = new AbortController();
+        const t = setTimeout(() => ctrl.abort(), 60000);
+        const res = await api('/api/upload', { method: 'POST', body: fd, signal: ctrl.signal });
+        clearTimeout(t);
         const url = res?.url || res?.data?.url;
-        if (!url) throw new Error('لم يُرجع الخادم رابط الصورة. تأكد من إعداد Cloudinary أو التخزين المحلي.');
+        if (!url) throw new Error('لم يُرجع الخادم رابط الصورة. تأكد من إعداد Cloudinary على Render.');
         const profRes = await api('/api/users/profile', { method: 'PUT', body: JSON.stringify({ profileImage: url }) });
         const savedUser = profRes?.user || profRes?.data?.user;
         user.profileImage = savedUser?.profileImage ?? url;
         safeStorage.setItem('chat_user', JSON.stringify(user));
         showSettingsModal();
-      } catch (err) { alert(err.message || 'فشل رفع الصورة'); }
-      finally { if (btn) btn.textContent = origText || 'تغيير الصورة'; e.target.value = ''; }
+        if (btn) btn.textContent = 'تم بنجاح ✓';
+        setTimeout(() => { if (btn) btn.textContent = origText || 'تغيير الصورة'; }, 1500);
+      } catch (err) {
+        let msg = err.message || 'فشل رفع الصورة';
+        if (err.name === 'AbortError') msg = 'انتهت المهلة. الصورة كبيرة أو الاتصال بطيء. جرّب صورة أصغر.';
+        alert(msg);
+      } finally { if (btn) btn.disabled = false; e.target.value = ''; if (btn && !btn.textContent.includes('✓')) btn.textContent = origText || 'تغيير الصورة'; }
     }
     async function saveProfileSettings() {
       const name = document.getElementById('settingsName').value.trim();
       const about = document.getElementById('settingsAbout').value.trim();
+      const btn = document.getElementById('saveProfileBtn');
+      const origText = btn?.textContent;
+      if (btn) btn.textContent = 'جاري الحفظ...';
       try {
         await api('/api/users/profile', { method: 'PUT', body: JSON.stringify({ name, about }) });
         user = { ...user, name: name || user.name, about: about || user.about };
         safeStorage.setItem('chat_user', JSON.stringify(user));
         document.getElementById('myName').textContent = user.name || user.phone;
-      } catch (e) { alert(e.message); }
+        document.getElementById('settingsModal').classList.remove('show');
+      } catch (e) { alert(e.message || 'فشل الحفظ'); }
+      if (btn) btn.textContent = origText || 'حفظ البروفايل';
     }
     async function deleteMyAccount() {
       if (!confirm('هل أنت متأكد؟ سيُحذف حسابك نهائياً. يمكنك التسجيل مرة أخرى برقمك وستحتاج موافقة الأدمن.')) return;

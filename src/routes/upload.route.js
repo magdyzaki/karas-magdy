@@ -4,7 +4,21 @@ const protect = require("../middleware/auth.middleware");
 const { upload } = require("../middleware/upload.middleware");
 const { cloudinary, isCloudinaryConfigured } = require("../config/cloudinary");
 
-router.post("/", protect, upload.single("file"), async (req, res) => {
+const uploadMw = (req, res, next) => {
+  upload.single("file")(req, res, (err) => {
+    if (err) {
+      const msg = err.code === "LIMIT_FILE_SIZE"
+        ? "الملف كبير جداً (الحد 25 ميجا)"
+        : err.code === "LIMIT_UNEXPECTED_FILE"
+        ? "اسم حقل الملف غير صحيح"
+        : err.message || "خطأ في رفع الملف";
+      return res.status(400).json({ success: false, message: msg });
+    }
+    next();
+  });
+};
+
+router.post("/", protect, uploadMw, async (req, res) => {
   try {
     if (!req.file) {
       return res.status(400).json({
@@ -34,9 +48,13 @@ router.post("/", protect, upload.single("file"), async (req, res) => {
       filename: req.file.filename || req.file.originalname,
     });
   } catch (error) {
+    const msg = error.message || "خطأ في الرفع";
+    const cloudMsg = String(msg).toLowerCase().includes("cloudinary")
+      ? "تأكد من إعداد CLOUDINARY_CLOUD_NAME, API_KEY, API_SECRET في Render"
+      : msg;
     res.status(500).json({
       success: false,
-      message: error.message,
+      message: cloudMsg,
     });
   }
 });
