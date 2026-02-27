@@ -1,0 +1,23 @@
+# Render.com - نشر التطبيق على السحابة للوصول من أي موبايل أو شبكة
+# https://render.com
+services:
+  - type: web
+    name: karas-magdy
+    env: node
+    buildCommand: npm install
+    startCommand: npm start
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: MONGO_URI
+        sync: false
+      - key: JWT_SECRET
+        generateValue: true
+      - key: BASE_URL
+        sync: false
+      - key: HTTPS
+        value: "false"
+      - key: APPROVAL_MODE
+        value: "false"
+      - key: ADMIN_PHONES
+        sync: false
