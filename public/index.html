@@ -61,9 +61,12 @@
     .reply-preview { padding: 8px 12px; background: #e7f5eb; border-radius: 8px; margin-bottom: 8px; display: flex; justify-content: space-between; align-items: center; }
     .reply-preview .text { font-size: 13px; color: #333; max-width: 200px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
     .reply-preview .cancel { cursor: pointer; color: #666; }
-    .send-area { padding: 12px; background: #f0f2f5; display: flex; gap: 8px; }
-    .send-area input { flex: 1; padding: 12px 16px; border: none; border-radius: 24px; font-size: 15px; }
-    .send-area button { padding: 12px 24px; background: #25d366; color: #fff; border: none; border-radius: 24px; cursor: pointer; font-weight: bold; }
+    .send-area { padding: 12px; background: #f0f2f5; display: flex; gap: 8px; align-items: center; }
+    .send-area .input-row { flex: 1; min-width: 0; display: flex; gap: 8px; align-items: center; }
+    .send-area .input-row input { flex: 1; min-width: 0; padding: 12px 16px; border: none; border-radius: 24px; font-size: 15px; }
+    .send-area .input-row #sendBtn { flex-shrink: 0; }
+    .send-area button { padding: 12px 24px; background: #25d366; color: #fff; border: none; border-radius: 24px; cursor: pointer; font-weight: bold; flex-shrink: 0; }
+    .send-area .btn-icon { padding: 12px; min-width: 44px; }
     .modal { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.5); z-index: 100; align-items: center; justify-content: center; }
     .modal.show { display: flex; }
     .modal-content { background: #fff; padding: 24px; border-radius: 8px; width: 90%; max-width: 360px; max-height: 80vh; overflow-y: auto; }
@@ -136,6 +139,9 @@
       .msg .media img, .msg .media video { max-width: 100%; }
       .modal-content { max-width: 95%; }
       .sidebar-header h3 { font-size: 16px; }
+      .send-area { gap: 6px; padding: 10px; }
+      .send-area .btn-icon { padding: 10px; min-width: 40px; font-size: 16px; }
+      .send-area #sendBtn { padding: 10px 14px; font-size: 14px; }
     }
   </style>
 </head>
@@ -214,11 +220,13 @@
           </div>
           <div class="send-area">
             <input type="file" id="fileInput" accept="image/*,video/*,audio/*,.pdf,.doc,.docx,.txt" style="display:none" onchange="onFileSelected(event)">
-            <button type="button" onclick="document.getElementById('fileInput').click()" style="padding:12px 16px;background:#075e54;color:#fff;border:none;border-radius:50%;cursor:pointer;font-size:18px" title="إرفاق ملف">📎</button>
-            <button type="button" onclick="showGifModal()" style="padding:12px 16px;background:#075e54;color:#fff;border:none;border-radius:50%;cursor:pointer;font-size:18px" title="GIF">🎞️</button>
-            <button type="button" id="pollBtn" onclick="showPollModal()" style="display:none;padding:12px 16px;background:#075e54;color:#fff;border:none;border-radius:50%;cursor:pointer;font-size:18px" title="استطلاع">📊</button>
-            <input type="text" id="msgInput" placeholder="اكتب رسالة..." onkeypress="if(event.key==='Enter')sendMsg()" oninput="onMsgInput()">
-            <button onclick="sendMsg()">إرسال</button>
+            <button type="button" class="btn-icon" onclick="document.getElementById('fileInput').click()" style="background:#075e54;color:#fff;border:none;border-radius:50%;cursor:pointer;font-size:18px" title="إرفاق ملف">📎</button>
+            <button type="button" class="btn-icon" onclick="showGifModal()" style="background:#075e54;color:#fff;border:none;border-radius:50%;cursor:pointer;font-size:18px" title="GIF">🎞️</button>
+            <button type="button" id="pollBtn" class="btn-icon" onclick="showPollModal()" style="display:none;background:#075e54;color:#fff;border:none;border-radius:50%;cursor:pointer;font-size:18px" title="استطلاع">📊</button>
+            <div class="input-row">
+              <input type="text" id="msgInput" placeholder="اكتب رسالة..." onkeypress="if(event.key==='Enter')sendMsg()" oninput="onMsgInput()">
+              <button type="button" id="sendBtn" onclick="sendMsg()" style="padding:12px 16px" title="إرسال">إرسال</button>
+            </div>
           </div>
         </div>
       </div>
