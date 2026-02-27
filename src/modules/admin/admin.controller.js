@@ -43,8 +43,26 @@ const unbanUser = async (req, res) => {
   res.json({ success: true, message: "تم إلغاء الحظر", user });
 };
 
+const deleteUser = async (req, res) => {
+  const { userId } = req.params;
+  if (userId === req.user._id.toString()) {
+    return res.status(400).json({ success: false, message: "لا يمكنك حذف نفسك" });
+  }
+  const user = await User.findById(userId);
+  if (!user) {
+    return res.status(404).json({ success: false, message: "المستخدم غير موجود" });
+  }
+  user.isDeleted = true;
+  user.isApproved = false;
+  user.name = "New User";
+  user.profileImage = "";
+  user.about = "Hey there! I am using WhatsApp Clone.";
+  await user.save();
+  res.json({ success: true, message: "تم حذف المستخدم. يمكنه إعادة التسجيل برقمه وستحتاج موافقتك." });
+};
+
 const getAllUsers = async (req, res) => {
-  const users = await User.find()
+  const users = await User.find({ isDeleted: { $ne: true } })
     .select("_id phone name profileImage isApproved isBanned createdAt")
     .sort({ createdAt: -1 });
   res.json({ success: true, users });
@@ -55,5 +73,6 @@ module.exports = {
   approveUser,
   banUser,
   unbanUser,
+  deleteUser,
   getAllUsers,
 };

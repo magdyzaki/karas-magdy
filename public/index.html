@@ -856,7 +856,8 @@
           ? users.map(u => `<div style="padding:12px;border-bottom:1px solid #eee;display:flex;justify-content:space-between;align-items:center">
             <span>${escapeHtml(u.name||u.phone)} (${escapeHtml(u.phone)})</span>
             <div><button onclick="adminApprove('${u._id}')" style="padding:6px 12px;background:#25d366;color:#fff;border:none;border-radius:4px;cursor:pointer;margin-left:6px">موافقة</button>
-            <button onclick="adminBan('${u._id}')" style="padding:6px 12px;background:#d32f2f;color:#fff;border:none;border-radius:4px;cursor:pointer">حظر</button></div>
+            <button onclick="adminBan('${u._id}')" style="padding:6px 12px;background:#d32f2f;color:#fff;border:none;border-radius:4px;cursor:pointer;margin-left:4px">حظر</button>
+            <button onclick="adminDeleteUser('${u._id}')" style="padding:6px 12px;background:#795548;color:#fff;border:none;border-radius:4px;cursor:pointer;margin-left:4px" title="حذف نهائياً وإجباره على إعادة التسجيل">حذف</button></div>
           </div>`).join('')
           : '<p style="padding:16px;color:#999">لا يوجد مستخدمون معلقون</p>';
       } catch (e) {
@@ -873,7 +874,8 @@
             return `<div style="padding:12px;border-bottom:1px solid #eee;display:flex;justify-content:space-between;align-items:center">
             <span>${escapeHtml(u.name||u.phone)} (${escapeHtml(u.phone)}) ${u.isBanned?'<span style="color:#d32f2f">محظور</span>':''} ${!u.isApproved?'<span style="color:#ff9800">معلق</span>':''} ${isSelf?'<span style="color:#666">(أنت)</span>':''}</span>
             <div>${!u.isApproved?`<button onclick="adminApprove('${u._id}')" style="padding:6px 12px;background:#25d366;color:#fff;border:none;border-radius:4px;cursor:pointer;margin-left:6px">موافقة</button>`:''}
-            ${u.isBanned?`<button onclick="adminUnban('${u._id}')" style="padding:6px 12px;background:#2196f3;color:#fff;border:none;border-radius:4px;cursor:pointer">رفع الحظر</button>`:(!isSelf?`<button onclick="adminBan('${u._id}')" style="padding:6px 12px;background:#d32f2f;color:#fff;border:none;border-radius:4px;cursor:pointer">حظر</button>`:'')}
+            ${u.isBanned?`<button onclick="adminUnban('${u._id}')" style="padding:6px 12px;background:#2196f3;color:#fff;border:none;border-radius:4px;cursor:pointer;margin-left:4px">رفع الحظر</button>`:(!isSelf?`<button onclick="adminBan('${u._id}')" style="padding:6px 12px;background:#d32f2f;color:#fff;border:none;border-radius:4px;cursor:pointer;margin-left:4px">حظر</button>`:'')}
+            ${!isSelf?`<button onclick="adminDeleteUser('${u._id}')" style="padding:6px 12px;background:#795548;color:#fff;border:none;border-radius:4px;cursor:pointer;margin-left:4px" title="حذف نهائياً وإجباره على إعادة التسجيل">حذف</button>`:''}
             </div>
           </div>`;
           }).join('')
@@ -901,6 +903,15 @@
       try {
         await api('/api/admin/unban/' + userId, { method: 'POST' });
         loadAdminUsers();
+      } catch (e) { alert(e.message); }
+    }
+    async function adminDeleteUser(userId) {
+      if (!confirm('حذف هذا المستخدم نهائياً؟ سيُحذف حسابه ويُجبَر على إعادة التسجيل برقمه. ستكون موافقتك مطلوبة مرة أخرى.')) return;
+      try {
+        await api('/api/admin/delete-user/' + userId, { method: 'POST' });
+        loadAdminPending();
+        loadAdminUsers();
+        alert('تم حذف المستخدم');
       } catch (e) { alert(e.message); }
     }
 
