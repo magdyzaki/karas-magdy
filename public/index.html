@@ -698,6 +698,10 @@
         if (currentChatOtherUserId === userId) updateHeaderStatus();
         renderConvList();
       });
+      socket.on('user_profile_updated', async ({ userId }) => {
+        const hasConv = conversations.some(c => (c.participants || []).some(p => String(p._id || p) === userId));
+        if (hasConv) { await loadConversations(); if (currentChatOtherUserId === userId) updateHeaderAvatarFromConv(); }
+      });
       socket.on('message_deleted', ({ conversationId, messageId, message }) => {
         if (currentConvId !== conversationId) return;
         var m = lastMessages.find(x => String(x._id) === String(messageId));
@@ -1414,6 +1418,17 @@
       }).join('');
     }
 
+    function updateHeaderAvatarFromConv() {
+      if (!currentConvId || currentConvIsGroup) return;
+      const conv = conversations.find(c => c._id === currentConvId);
+      const other = (conv?.participants || []).find(p => String(p._id) !== String(user._id));
+      const avEl = document.getElementById('chatHeaderAvatar');
+      const name = document.getElementById('chatHeader')?.textContent || '?';
+      if (avEl && other) {
+        if (other.profileImage) { avEl.innerHTML = avatarHtml(other, 40, name[0]); avEl.style.background = 'none'; }
+        else { avEl.innerHTML = (name[0]||'?').toString().toUpperCase(); avEl.style.background = '#2a3942'; avEl.style.fontSize = '16px'; }
+      }
+    }
     function goBackToMain() {
       if (currentConvId && socket) socket.emit('leave_conversation', { conversationId: currentConvId });
       currentConvId = null;

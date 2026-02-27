@@ -80,6 +80,10 @@ const updateProfile = async (req, res) => {
 
     await user.save();
 
+    // إشعار الجميع بتحديث البروفايل ليُحدَّث العرض عند الأصدقاء
+    const io = req.app.get("io");
+    if (io) io.emit("user_profile_updated", { userId: user._id.toString(), profileImage: user.profileImage });
+
     res.status(200).json({
       success: true,
       message: "Profile updated successfully",
