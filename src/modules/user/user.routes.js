@@ -5,6 +5,7 @@ const protect = require("../../middleware/auth.middleware");
 const {
   checkPhoneRegistered,
   searchUsers,
+  getMe,
   updateProfile,
   blockUser,
   unblockUser,
@@ -17,6 +18,7 @@ const {
   toggleMuteConversation,
 } = require("./user.controller");
 
+router.get("/me", protect, getMe);
 router.get("/check-phone", protect, checkPhoneRegistered);
 router.get("/search", protect, searchUsers);
 router.put("/profile", protect, updateProfile);

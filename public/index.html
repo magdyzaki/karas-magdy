@@ -699,7 +699,13 @@
         if (currentChatOtherUserId === userId) updateHeaderStatus();
         renderConvList();
       });
-      socket.on('user_profile_updated', async ({ userId }) => {
+      socket.on('user_profile_updated', async ({ userId, profileImage }) => {
+        if (String(userId) === String(user?._id)) {
+          if (profileImage !== undefined) user.profileImage = profileImage;
+          safeStorage.setItem('chat_user', JSON.stringify(user));
+          const modal = document.getElementById('settingsModal');
+          if (modal && modal.classList.contains('show')) showSettingsModal();
+        }
         const hasConv = conversations.some(c => (c.participants || []).some(p => String(p._id || p) === userId));
         if (hasConv) { await loadConversations(); if (currentChatOtherUserId === userId) updateHeaderAvatarFromConv(); }
       });
@@ -917,7 +923,12 @@
       const base = (profileImage.startsWith('http') ? '' : API) + (profileImage.startsWith('/') ? '' : '/') + profileImage;
       return cacheBust ? base + sep + '_=' + Date.now() : base;
     }
-    function showSettingsModal() {
+    async function showSettingsModal() {
+      try {
+        const res = await api('/api/users/me');
+        const fresh = res?.user || res?.data?.user;
+        if (fresh) { user = { ...user, ...fresh }; safeStorage.setItem('chat_user', JSON.stringify(user)); }
+      } catch (_) {}
       document.getElementById('settingsModal').classList.add('show');
       document.getElementById('settingsName').value = user?.name || '';
       document.getElementById('settingsAbout').value = user?.about || '';
@@ -951,11 +962,13 @@
         clearTimeout(t);
         const url = res?.url || res?.data?.url;
         if (!url) throw new Error('لم يُرجع الخادم رابط الصورة. تأكد من إعداد Cloudinary على Render.');
-        const profRes = await api('/api/users/profile', { method: 'PUT', body: JSON.stringify({ profileImage: url }) });
-        const savedUser = profRes?.user || profRes?.data?.user;
-        user.profileImage = savedUser?.profileImage ?? url;
+        await api('/api/users/profile', { method: 'PUT', body: JSON.stringify({ profileImage: url }) });
+        const meRes = await api('/api/users/me');
+        const fresh = meRes?.user || meRes?.data?.user;
+        if (fresh?.profileImage) user.profileImage = fresh.profileImage;
+        else user.profileImage = url;
         safeStorage.setItem('chat_user', JSON.stringify(user));
-        showSettingsModal();
+        await showSettingsModal();
         if (btn) btn.textContent = 'تم بنجاح ✓';
         setTimeout(() => { if (btn) btn.textContent = origText || 'تغيير الصورة'; }, 1500);
       } catch (err) {

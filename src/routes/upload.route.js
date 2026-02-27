@@ -27,6 +27,14 @@ router.post("/", protect, uploadMw, async (req, res) => {
       });
     }
 
+    const isProd = process.env.NODE_ENV === "production";
+    if (isProd && !isCloudinaryConfigured) {
+      return res.status(503).json({
+        success: false,
+        message: "رفع الصور غير مفعّل. أضف CLOUDINARY_CLOUD_NAME و API_KEY و API_SECRET في Render.",
+      });
+    }
+
     let url;
 
     if (isCloudinaryConfigured && req.file.buffer) {

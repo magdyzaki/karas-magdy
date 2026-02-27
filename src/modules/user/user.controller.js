@@ -58,6 +58,18 @@ const searchUsers = async (req, res) => {
   }
 };
 
+const getMe = async (req, res) => {
+  try {
+    const u = await User.findById(req.user._id)
+      .select("_id name phone profileImage about themePreference")
+      .lean();
+    if (!u) return res.status(404).json({ success: false, message: "User not found" });
+    res.json({ success: true, user: u });
+  } catch (error) {
+    res.status(500).json({ success: false, message: error.message });
+  }
+};
+
 const updateProfile = async (req, res) => {
   try {
     const { name, profileImage, about } = req.body;
@@ -80,14 +92,14 @@ const updateProfile = async (req, res) => {
 
     await user.save();
 
-    // إشعار الجميع بتحديث البروفايل ليُحدَّث العرض عند الأصدقاء
+    // إشعار الجميع بتحديث البروفايل ليُحدَّث العرض عند الأصدقاء
     const io = req.app.get("io");
     if (io) io.emit("user_profile_updated", { userId: user._id.toString(), profileImage: user.profileImage });
 
     res.status(200).json({
       success: true,
       message: "Profile updated successfully",
-      user,
+      user: user.toObject ? user.toObject() : { _id: user._id, name: user.name, profileImage: user.profileImage, about: user.about, themePreference: user.themePreference },
     });
   } catch (error) {
     res.status(500).json({ success: false, message: error.message });
@@ -275,6 +287,7 @@ const togglePinConversation = async (req, res) => {
 module.exports = {
   checkPhoneRegistered,
   searchUsers,
+  getMe,
   updateProfile,
   blockUser,
   unblockUser,
