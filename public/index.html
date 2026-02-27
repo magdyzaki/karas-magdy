@@ -921,6 +921,10 @@
 
     function buildProfileImageSrc(profileImage, cacheBust) {
       if (!profileImage) return '';
+      if (profileImage.startsWith('https://res.cloudinary.com') || profileImage.startsWith('http://res.cloudinary.com')) {
+        const proxy = API + '/api/proxy-image?url=' + encodeURIComponent(profileImage) + (cacheBust ? '&_=' + Date.now() : '');
+        return proxy;
+      }
       const sep = profileImage.includes('?') ? '&' : '?';
       const base = (profileImage.startsWith('http') ? '' : API) + (profileImage.startsWith('/') ? '' : '/') + profileImage;
       return cacheBust ? base + sep + '_=' + Date.now() : base;
