@@ -530,8 +530,9 @@
       const s = size || 48;
       const letter = (fallback || (p?.name?.[0] || p?.phone?.[0] || '?')).toString().toUpperCase();
       if (p?.profileImage) {
-        const url = (p.profileImage.startsWith('http') ? '' : API) + (p.profileImage.startsWith('/') ? '' : '/') + p.profileImage;
-        return '<img src="'+url+'" style="width:100%;height:100%;object-fit:cover;border-radius:50%" alt="">';
+        const url = buildProfileImageSrc(p.profileImage, false);
+        const escapedLetter = letter.replace(/'/g, "\\'");
+        return '<img src="'+url+'" style="width:100%;height:100%;object-fit:cover;border-radius:50%" alt="" onerror="var p=this.parentElement;if(p){p.innerHTML=\''+escapedLetter+'\';p.style.background=\'#ddd\'}">';
       }
       return letter;
     }
@@ -910,18 +911,27 @@
       } catch (e) { alert(e.message); }
     }
 
+    function buildProfileImageSrc(profileImage, cacheBust) {
+      if (!profileImage) return '';
+      const sep = profileImage.includes('?') ? '&' : '?';
+      const base = (profileImage.startsWith('http') ? '' : API) + (profileImage.startsWith('/') ? '' : '/') + profileImage;
+      return cacheBust ? base + sep + '_=' + Date.now() : base;
+    }
     function showSettingsModal() {
       document.getElementById('settingsModal').classList.add('show');
       document.getElementById('settingsName').value = user?.name || '';
       document.getElementById('settingsAbout').value = user?.about || '';
       document.getElementById('settingsUserId').textContent = user?._id || '-';
       const av = document.getElementById('settingsAvatar');
+      const fallback = (user?.name?.[0] || user?.phone?.[0] || '?').toUpperCase();
+      av.dataset.fallback = fallback;
       if (user?.profileImage) {
         av.style.background = 'none';
-        av.innerHTML = '<img src="' + (user.profileImage.startsWith('http') ? '' : API) + (user.profileImage.startsWith('/') ? '' : '/') + user.profileImage + '" style="width:100%;height:100%;object-fit:cover">';
+        const src = buildProfileImageSrc(user.profileImage, true);
+        av.innerHTML = '<img src="'+src+'" alt="" style="width:100%;height:100%;object-fit:cover" onerror="var p=this.parentElement;if(p)p.innerHTML=p.dataset.fallback||\'?\';p.style.background=\'#075e54\'">';
       } else {
         av.style.background = '#075e54';
-        av.innerHTML = (user?.name?.[0] || user?.phone?.[0] || '?').toUpperCase();
+        av.innerHTML = fallback;
       }
       const th = safeStorage.getItem('theme') || user?.themePreference || 'light';
       document.querySelectorAll('.theme-btn').forEach(b => { b.style.opacity = b.dataset.theme === th ? '1' : '0.5'; });
@@ -929,15 +939,22 @@
     async function uploadAvatar(e) {
       const file = e.target.files?.[0];
       if (!file) return;
+      const btn = e.target.closest('div')?.querySelector('button');
+      const origText = btn?.textContent;
+      if (btn) btn.textContent = 'جاري الرفع...';
       const fd = new FormData();
       fd.append('file', file);
       try {
-        const { url } = await api('/api/upload', { method: 'POST', body: fd });
-        await api('/api/users/profile', { method: 'PUT', body: JSON.stringify({ profileImage: url }) });
-        user.profileImage = url;
+        const res = await api('/api/upload', { method: 'POST', body: fd });
+        const url = res?.url || res?.data?.url;
+        if (!url) throw new Error('لم يُرجع الخادم رابط الصورة. تأكد من إعداد Cloudinary أو التخزين المحلي.');
+        const profRes = await api('/api/users/profile', { method: 'PUT', body: JSON.stringify({ profileImage: url }) });
+        const savedUser = profRes?.user || profRes?.data?.user;
+        user.profileImage = savedUser?.profileImage ?? url;
         safeStorage.setItem('chat_user', JSON.stringify(user));
         showSettingsModal();
-      } catch (err) { alert(err.message); }
+      } catch (err) { alert(err.message || 'فشل رفع الصورة'); }
+      finally { if (btn) btn.textContent = origText || 'تغيير الصورة'; e.target.value = ''; }
     }
     async function saveProfileSettings() {
       const name = document.getElementById('settingsName').value.trim();
