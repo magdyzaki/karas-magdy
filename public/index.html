@@ -519,6 +519,54 @@
     let viewerGroupIdx = 0; let viewerStoryIdx = 0;
     const REACTIONS = ['❤️','👍','😂','😮','👎'];
     let starredMessageIds = [];
+    let _audioCtx = null;
+    let _callRingInterval = null;
+    let _callRingOsc = null;
+
+    function getAudioCtx() {
+      if (!_audioCtx) _audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+      return _audioCtx;
+    }
+    function playMessageSound() {
+      try {
+        const ctx = getAudioCtx();
+        if (ctx.state === 'suspended') ctx.resume();
+        const osc = ctx.createOscillator();
+        const gain = ctx.createGain();
+        osc.connect(gain);
+        gain.connect(ctx.destination);
+        osc.frequency.value = 800;
+        osc.type = 'sine';
+        gain.gain.setValueAtTime(0.15, ctx.currentTime);
+        gain.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + 0.15);
+        osc.start(ctx.currentTime);
+        osc.stop(ctx.currentTime + 0.15);
+      } catch (_) {}
+    }
+    function playCallRingtone() {
+      stopCallRingtone();
+      try {
+        const ctx = getAudioCtx();
+        if (ctx.state === 'suspended') ctx.resume();
+        const playRing = () => {
+          const osc = ctx.createOscillator();
+          const gain = ctx.createGain();
+          osc.connect(gain);
+          gain.connect(ctx.destination);
+          osc.frequency.value = 800;
+          osc.type = 'sine';
+          gain.gain.setValueAtTime(0.2, ctx.currentTime);
+          gain.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + 0.3);
+          osc.start(ctx.currentTime);
+          osc.stop(ctx.currentTime + 0.3);
+        };
+        playRing();
+        _callRingInterval = setInterval(playRing, 1000);
+      } catch (_) {}
+    }
+    function stopCallRingtone() {
+      if (_callRingInterval) { clearInterval(_callRingInterval); _callRingInterval = null; }
+    }
 
     async function api(path, opts = {}) {
       const headers = { ...opts.headers };
@@ -600,6 +648,7 @@
         document.getElementById('myName').textContent = user.name || user.phone;
         applyTheme(safeStorage.getItem('theme') || user.themePreference || 'light');
         updateAdminUi();
+        if (window.AudioContext || window.webkitAudioContext) { try { const ac = getAudioCtx(); if (ac.state === 'suspended') ac.resume(); } catch(_){} }
         loadStarredIds();
         loadConversations();
         loadStories();
@@ -622,10 +671,18 @@
       socket.on('connect', () => console.log('⚡ Socket متصل'));
       socket.on('connect_error', (err) => console.error('خطأ اتصال Socket:', err.message));
       socket.on('new_message', ({ conversationId, message }) => {
+        const fromOthers = message.sender && String(message.sender._id || message.sender) !== String(user._id);
+        if (fromOthers) {
+          const conv = conversations.find(c => String(c._id) === String(conversationId));
+          if (!conv || !conv.muted) {
+            playMessageSound();
+            if (navigator.vibrate) navigator.vibrate(200);
+          }
+        }
         if (currentConvId === conversationId) {
           appendMessage(message);
           document.getElementById('typingIndicator').style.display = 'none';
-          if (!currentConvIsGroup && message.sender && String(message.sender._id || message.sender) !== String(user._id))
+          if (!currentConvIsGroup && fromOthers)
             api('/api/messages/' + conversationId + '/read', { method: 'POST', body: JSON.stringify({ messageIds: [message._id] }) }).catch(() => {});
         }
         loadConversations();
@@ -649,8 +706,11 @@
         document.getElementById('rejectBtn').style.display = 'inline-block';
         document.getElementById('hangupBtn').style.display = 'none';
         document.getElementById('callModal').classList.add('show');
+        playCallRingtone();
+        if (navigator.vibrate) navigator.vibrate([200, 100, 200, 100, 200]);
       });
       socket.on('call_accepted', ({ callId, calleeUserId }) => {
+        stopCallRingtone();
         activeCallId = callId;
         callState = 'in_call';
         document.getElementById('callState').textContent = 'متصل';
@@ -658,9 +718,9 @@
         document.getElementById('fullscreenBtn').style.display = callVideo ? 'inline-block' : 'none';
         setupPeerAsCaller(calleeUserId);
       });
-      socket.on('call_rejected', () => { resetCall(); });
-      socket.on('call_ended', () => { resetCall(); });
-      socket.on('call_error', (err) => { resetCall(); alert(err?.message || 'خطأ في المكالمة'); });
+      socket.on('call_rejected', () => { stopCallRingtone(); resetCall(); });
+      socket.on('call_ended', () => { stopCallRingtone(); resetCall(); });
+      socket.on('call_error', (err) => { stopCallRingtone(); resetCall(); alert(err?.message || 'خطأ في المكالمة'); });
       socket.on('webrtc_offer', async ({ fromUserId, offer }) => {
         if (!peerConnection) await setupPeerAsCallee(fromUserId);
         if (!peerConnection) return;
@@ -1772,6 +1832,7 @@
     }
     async function answerCall() {
       if (callState !== 'ringing' || !currentCallTargetUserId) return;
+      stopCallRingtone();
       if (!isWebRTCSupported()) {
         alert('المكالمات المرئية تتطلب HTTPS. إذا فتحت من جهاز آخر عبر http:// استخدم https:// بدلاً منه.');
         return;
@@ -1803,6 +1864,7 @@
       btn.title = remoteVideoFullscreen ? 'تصغير' : 'تكبير فيديو الصديق لرؤية أوضح';
     }
     function resetCall() {
+      stopCallRingtone();
       remoteVideoFullscreen = false;
       document.getElementById('remoteVideo').classList.remove('remote-fullscreen');
       document.getElementById('fullscreenBtn').style.display = 'none';

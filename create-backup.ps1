@@ -13,6 +13,8 @@ if (Test-Path "package.json") { $toInclude += "package.json" }
 if (Test-Path "package-lock.json") { $toInclude += "package-lock.json" }
 if (Test-Path ".env.example") { $toInclude += ".env.example" }
 if (Test-Path "create-backup.ps1") { $toInclude += "create-backup.ps1" }
+if (Test-Path "render.yaml") { $toInclude += "render.yaml" }
+if (Test-Path "uploads") { $toInclude += "uploads" }
 # لا تضف .env (يحتوي على بيانات حساسة) - انسخه يدوياً إذا احتجت
 
 Compress-Archive -Path $toInclude -DestinationPath $dest -Force
