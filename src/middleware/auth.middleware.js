@@ -37,6 +37,13 @@ const protect = async (req, res, next) => {
       });
     }
 
+    if (user.isDeleted) {
+      return res.status(403).json({
+        success: false,
+        message: "تم حذف الحساب. سجّل الدخول مرة أخرى.",
+      });
+    }
+
     req.user = user;
 
     next();

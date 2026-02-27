@@ -36,6 +36,10 @@ const userSchema = new mongoose.Schema(
       type: Boolean,
       default: false,
     },
+    isDeleted: {
+      type: Boolean,
+      default: false,
+    },
     blockedUsers: [{ type: mongoose.Schema.Types.ObjectId, ref: "User" }],
     pinnedConversations: [{ type: mongoose.Schema.Types.ObjectId, ref: "Conversation" }],
     archivedConversations: [{ type: mongoose.Schema.Types.ObjectId, ref: "Conversation" }],

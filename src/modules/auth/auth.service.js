@@ -56,6 +56,25 @@ const loginWithPhone = async (phone, inviteToken) => {
         await invite.save();
       }
     }
+  } else if (user.isDeleted) {
+    user.isDeleted = false;
+    user.isApproved = !approvalMode();
+    user.name = "New User";
+    user.profileImage = "";
+    user.about = "Hey there! I am using WhatsApp Clone.";
+    await user.save();
+    if (inviteToken) {
+      const invite = await Invite.findOne({
+        token: inviteToken,
+        usedBy: null,
+        expiresAt: { $gt: new Date() },
+      });
+      if (invite) {
+        invite.usedBy = user._id;
+        invite.usedAt = new Date();
+        await invite.save();
+      }
+    }
   }
 
   if (user.isBanned) {

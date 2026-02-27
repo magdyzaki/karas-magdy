@@ -9,6 +9,7 @@ const {
   blockUser,
   unblockUser,
   getBlockedList,
+  deleteAccount,
   togglePinConversation,
   toggleArchiveConversation,
   toggleStarMessage,
@@ -26,6 +27,7 @@ router.post("/mute/:conversationId", protect, toggleMuteConversation);
 router.post("/archive/:conversationId", protect, toggleArchiveConversation);
 router.get("/blocked", protect, getBlockedList);
 router.post("/block/:userId", protect, blockUser);
+router.post("/delete-account", protect, deleteAccount);
 router.post("/unblock/:userId", protect, unblockUser);
 
 module.exports = router;

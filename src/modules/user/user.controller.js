@@ -12,6 +12,7 @@ const checkPhoneRegistered = async (req, res) => {
     const u = await User.findOne({
       phone: { $regex: new RegExp(normalized + "$"), $options: "i" },
       isBanned: false,
+      isDeleted: { $ne: true },
       isApproved: true,
     })
       .select("_id name phone profileImage")
@@ -41,6 +42,7 @@ const searchUsers = async (req, res) => {
     const filter = {
       _id: { $ne: req.user._id, $nin: excludeIds },
       isBanned: false,
+      isDeleted: { $ne: true },
       isApproved: true,
     };
     if (phone) filter.phone = { $regex: phone, $options: "i" };
@@ -224,6 +226,22 @@ const toggleMuteConversation = async (req, res) => {
   }
 };
 
+const deleteAccount = async (req, res) => {
+  try {
+    const user = await User.findById(req.user._id);
+    if (!user) return res.status(404).json({ success: false, message: "المستخدم غير موجود" });
+    user.isDeleted = true;
+    user.isApproved = false;
+    user.name = "New User";
+    user.profileImage = "";
+    user.about = "Hey there! I am using WhatsApp Clone.";
+    await user.save();
+    res.json({ success: true, message: "تم حذف الحساب. يمكنك التسجيل مرة أخرى بانتظار الموافقة." });
+  } catch (error) {
+    res.status(500).json({ success: false, message: error.message });
+  }
+};
+
 const togglePinConversation = async (req, res) => {
   try {
     const { conversationId } = req.params;
@@ -257,6 +275,7 @@ module.exports = {
   blockUser,
   unblockUser,
   getBlockedList,
+  deleteAccount,
   togglePinConversation,
   toggleArchiveConversation,
   toggleStarMessage,
