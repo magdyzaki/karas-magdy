@@ -64,6 +64,7 @@ const getMe = async (req, res) => {
       .select("_id name phone profileImage about themePreference")
       .lean();
     if (!u) return res.status(404).json({ success: false, message: "User not found" });
+    res.setHeader("Cache-Control", "no-store, no-cache, must-revalidate");
     res.json({ success: true, user: u });
   } catch (error) {
     res.status(500).json({ success: false, message: error.message });
