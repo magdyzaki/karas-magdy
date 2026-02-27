@@ -1,5 +1,5 @@
 // Service Worker لـ Karas Magdy PWA
-const CACHE_NAME = 'karas-magdy-v2';
+const CACHE_NAME = 'karas-magdy-v3';
 
 self.addEventListener('install', (e) => {
   e.waitUntil(
@@ -10,9 +10,11 @@ self.addEventListener('install', (e) => {
 });
 
 self.addEventListener('fetch', (e) => {
-  if (e.request.url.includes('/api/') || e.request.url.includes('socket.io')) {
-    return;
-  }
+  if (e.request.url.includes('/api/') || e.request.url.includes('socket.io')) return;
+  try {
+    const u = new URL(e.request.url);
+    if (u.origin !== self.location.origin) return;
+  } catch (_) { return; }
   e.respondWith(
     fetch(e.request).catch(() => caches.match(e.request).then((r) => r || caches.match('/')))
   );

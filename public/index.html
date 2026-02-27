@@ -435,7 +435,7 @@
   <script>
     const API = (window.location.origin && window.location.origin !== 'null' && window.location.origin !== 'file://') ? window.location.origin : 'http://localhost:5000';
     if ('serviceWorker' in navigator) {
-      navigator.serviceWorker.register('/sw.js?v=2').catch(() => {});
+      navigator.serviceWorker.register('/sw.js?v=3').catch(() => {});
     }
     var deferredInstallPrompt = null;
     window.addEventListener('beforeinstallprompt', (e) => {
