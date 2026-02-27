@@ -1,5 +1,5 @@
 // Service Worker لـ Karas Magdy PWA
-const CACHE_NAME = 'karas-magdy-v3';
+const CACHE_NAME = 'karas-magdy-v4';
 
 self.addEventListener('install', (e) => {
   e.waitUntil(
