@@ -520,7 +520,8 @@
     let peerConnection = null;
     let localStream = null;
     let callVideo = true;
-    const pcConfig = { iceServers: [{ urls: 'stun:stun.l.google.com:19302' }] };
+    const pcConfig = { iceServers: [{ urls: 'stun:stun.l.google.com:19302' }, { urls: 'stun:stun1.l.google.com:19302' }] };
+    let iceCandidateQueue = [];
     let socket = null;
     let replyToMessage = null;
     let storiesData = [];
@@ -735,16 +736,26 @@
       socket.on('webrtc_offer', async ({ fromUserId, offer }) => {
         if (!peerConnection) await setupPeerAsCallee(fromUserId);
         if (!peerConnection) return;
-        await peerConnection.setRemoteDescription(new RTCSessionDescription(offer));
-        const answer = await peerConnection.createAnswer();
-        await peerConnection.setLocalDescription(answer);
-        socket.emit('webrtc_answer', { toUserId: fromUserId, answer });
+        try {
+          await peerConnection.setRemoteDescription(new RTCSessionDescription(offer));
+          await drainIceQueue();
+          const answer = await peerConnection.createAnswer();
+          await peerConnection.setLocalDescription(answer);
+          socket.emit('webrtc_answer', { toUserId: fromUserId, answer });
+        } catch (e) { console.error('offer:', e); resetCall(); }
       });
       socket.on('webrtc_answer', async ({ fromUserId, answer }) => {
-        if (peerConnection) await peerConnection.setRemoteDescription(new RTCSessionDescription(answer));
+        if (!peerConnection) return;
+        try {
+          await peerConnection.setRemoteDescription(new RTCSessionDescription(answer));
+          await drainIceQueue();
+        } catch (e) { console.error('answer:', e); resetCall(); }
       });
       socket.on('ice_candidate', async ({ fromUserId, candidate }) => {
-        if (peerConnection && candidate) await peerConnection.addIceCandidate(new RTCIceCandidate(candidate));
+        if (!candidate) return;
+        if (peerConnection && peerConnection.remoteDescription) {
+          try { await peerConnection.addIceCandidate(new RTCIceCandidate(candidate)); } catch (e) { console.warn('ice:', e); }
+        } else iceCandidateQueue.push(candidate);
       });
       socket.on('message_reaction', ({ messageId, conversationId, reactions }) => {
         if (currentConvId === conversationId) {
@@ -1878,6 +1889,7 @@
     function resetCall() {
       stopCallRingtone();
       remoteVideoFullscreen = false;
+      iceCandidateQueue = [];
       document.getElementById('remoteVideo').classList.remove('remote-fullscreen');
       document.getElementById('fullscreenBtn').style.display = 'none';
       document.getElementById('callModal').classList.remove('show');
@@ -1886,6 +1898,13 @@
       document.getElementById('remoteVideo').srcObject = null;
       document.getElementById('remoteAudio').srcObject = null;
       callState = 'idle'; activeCallId = null; currentCallTargetUserId = null;
+    }
+    async function drainIceQueue() {
+      if (!peerConnection || !peerConnection.remoteDescription) return;
+      while (iceCandidateQueue.length) {
+        const c = iceCandidateQueue.shift();
+        try { await peerConnection.addIceCandidate(new RTCIceCandidate(c)); } catch (e) { console.warn('ice:', e); }
+      }
     }
     async function setupPeerAsCaller(targetUserId) {
       try {
@@ -1910,8 +1929,12 @@
         var remoteEl = callVideo ? document.getElementById('remoteVideo') : document.getElementById('remoteAudio');
         remoteEl.srcObject = remoteStream;
         peerConnection.ontrack = (e) => {
-          if (e.track) remoteStream.addTrack(e.track);
+          if (e.streams && e.streams[0]) remoteEl.srcObject = e.streams[0];
+          else if (e.track) { remoteStream.addTrack(e.track); remoteEl.srcObject = remoteStream; }
           remoteEl.play().catch(() => {});
+        };
+        peerConnection.onconnectionstatechange = () => {
+          if (peerConnection.connectionState === 'connected') document.getElementById('callState').textContent = 'متصل';
         };
         const offer = await peerConnection.createOffer();
         await peerConnection.setLocalDescription(offer);
@@ -1944,8 +1967,12 @@
         var remoteEl = callVideo ? document.getElementById('remoteVideo') : document.getElementById('remoteAudio');
         remoteEl.srcObject = remoteStream;
         peerConnection.ontrack = (e) => {
-          if (e.track) remoteStream.addTrack(e.track);
+          if (e.streams && e.streams[0]) remoteEl.srcObject = e.streams[0];
+          else if (e.track) { remoteStream.addTrack(e.track); remoteEl.srcObject = remoteStream; }
           remoteEl.play().catch(() => {});
+        };
+        peerConnection.onconnectionstatechange = () => {
+          if (peerConnection.connectionState === 'connected') document.getElementById('callState').textContent = 'متصل';
         };
       } catch (e) {
           console.error(e);
