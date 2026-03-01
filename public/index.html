@@ -520,7 +520,12 @@
     let peerConnection = null;
     let localStream = null;
     let callVideo = true;
-    const pcConfig = { iceServers: [{ urls: 'stun:stun.l.google.com:19302' }, { urls: 'stun:stun1.l.google.com:19302' }] };
+    const pcConfig = {
+      iceServers: [
+        { urls: 'stun:stun.l.google.com:19302' },
+        { urls: 'stun:stun1.l.google.com:19302' }
+      ]
+    };
     let iceCandidateQueue = [];
     let socket = null;
     let replyToMessage = null;
@@ -754,7 +759,7 @@
       socket.on('ice_candidate', async ({ fromUserId, candidate }) => {
         if (!candidate) return;
         if (peerConnection && peerConnection.remoteDescription) {
-          try { await peerConnection.addIceCandidate(new RTCIceCandidate(candidate)); } catch (e) { console.warn('ice:', e); }
+          try { await peerConnection.addIceCandidate(new RTCIceCandidate(candidate)); } catch (e) { console.warn('[WebRTC] ice:', e); }
         } else iceCandidateQueue.push(candidate);
       });
       socket.on('message_reaction', ({ messageId, conversationId, reactions }) => {
