@@ -520,7 +520,13 @@
     let peerConnection = null;
     let localStream = null;
     let callVideo = true;
-    const pcConfig = { iceServers: [{ urls: 'stun:stun.l.google.com:19302' }] };
+    const pcConfig = {
+      iceServers: [
+        { urls: 'stun:stun.l.google.com:19302' },
+        { urls: 'stun:stun1.l.google.com:19302' },
+        { urls: 'stun:stun2.l.google.com:19302' }
+      ]
+    };
     let socket = null;
     let replyToMessage = null;
     let storiesData = [];
@@ -1647,10 +1653,17 @@
       const body = { conversationId: currentConvId, content };
       if (replyToMessage) { body.replyTo = replyToMessage._id; cancelReply(); }
       try {
-        await api('/api/messages', { method: 'POST', body: JSON.stringify(body) });
-        loadMessages();
+        var tempMsg = { _id: 'temp-' + Date.now(), content, sender: user, createdAt: new Date(), isTemp: true, replyTo: replyToMessage || undefined };
+        appendMessage(tempMsg);
+        const data = await api('/api/messages', { method: 'POST', body: JSON.stringify(body) });
+        const realMsg = data?.message || data;
+        lastMessages = lastMessages.filter(m => m._id !== tempMsg._id);
+        appendMessage(realMsg);
         loadConversations();
       } catch (e) {
+        lastMessages = lastMessages.filter(m => m._id !== tempMsg._id);
+        var el = document.getElementById('messages');
+        if (el) el.innerHTML = lastMessages.map(m => renderMessage(m)).join('');
         alert('فشل الإرسال: ' + e.message);
       }
     }
@@ -1910,7 +1923,12 @@
         var remoteEl = callVideo ? document.getElementById('remoteVideo') : document.getElementById('remoteAudio');
         remoteEl.srcObject = remoteStream;
         peerConnection.ontrack = (e) => {
-          if (e.track) remoteStream.addTrack(e.track);
+          if (e.streams && e.streams[0]) {
+            remoteEl.srcObject = e.streams[0];
+          } else if (e.track) {
+            remoteStream.addTrack(e.track);
+            remoteEl.srcObject = remoteStream;
+          }
           remoteEl.play().catch(() => {});
         };
         const offer = await peerConnection.createOffer();
@@ -1944,7 +1962,12 @@
         var remoteEl = callVideo ? document.getElementById('remoteVideo') : document.getElementById('remoteAudio');
         remoteEl.srcObject = remoteStream;
         peerConnection.ontrack = (e) => {
-          if (e.track) remoteStream.addTrack(e.track);
+          if (e.streams && e.streams[0]) {
+            remoteEl.srcObject = e.streams[0];
+          } else if (e.track) {
+            remoteStream.addTrack(e.track);
+            remoteEl.srcObject = remoteStream;
+          }
           remoteEl.play().catch(() => {});
         };
       } catch (e) {
