@@ -1661,12 +1661,26 @@
       clearTimeout(_typingStopTimer);
       if (contentOverride === null) input.value = '';
       const body = { conversationId: currentConvId, content };
-      if (replyToMessage) { body.replyTo = replyToMessage._id; cancelReply(); }
+      const rep = replyToMessage;
+      if (rep) { body.replyTo = rep._id; cancelReply(); }
+      const tempId = 'temp-' + Date.now();
+      const tempMsg = { _id: tempId, content, type: 'text', sender: { _id: user._id, name: user.name }, createdAt: new Date(), replyTo: rep || undefined };
+      appendMessage(tempMsg);
       try {
-        await api('/api/messages', { method: 'POST', body: JSON.stringify(body) });
-        loadMessages();
+        const res = await api('/api/messages', { method: 'POST', body: JSON.stringify(body) });
+        const msg = res?.message;
+        if (msg) {
+          const idx = lastMessages.findIndex(m => String(m._id) === tempId);
+          if (idx >= 0) lastMessages[idx] = msg;
+          const el = document.querySelector('.msg[data-id="' + tempId + '"]');
+          if (el) el.outerHTML = renderMessage(msg);
+        } else loadMessages();
         loadConversations();
       } catch (e) {
+        lastMessages = lastMessages.filter(m => String(m._id) !== tempId);
+        const el = document.querySelector('.msg[data-id="' + tempId + '"]');
+        if (el) el.remove();
+        if (contentOverride === null) input.value = content;
         alert('فشل الإرسال: ' + e.message);
       }
     }
