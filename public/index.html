@@ -129,6 +129,10 @@
     body.theme-dark .story-circle { background: #2a3942; color: #8696a0; }
     .theme-btn { padding: 8px 16px; border: 1px solid #ddd; border-radius: 6px; cursor: pointer; background: #f5f5f5; }
     body.theme-dark .theme-btn { background: #2a3942; border-color: #3f5059; color: #e9edef; }
+    .img-lightbox { position: fixed; inset: 0; background: rgba(0,0,0,0.9); z-index: 300; display: none; align-items: center; justify-content: center; padding: 16px; }
+    .img-lightbox.show { display: flex; }
+    .img-lightbox img { max-width: 100%; max-height: 100%; object-fit: contain; cursor: pointer; }
+    .img-lightbox .close-btn { position: absolute; top: 16px; right: 16px; background: rgba(255,255,255,0.2); color: #fff; border: none; padding: 12px 20px; border-radius: 8px; cursor: pointer; font-size: 18px; z-index: 1; }
     @media (max-width: 768px) {
       .container { max-width: 100%; }
       .chat-layout { flex-direction: row; }
@@ -204,7 +208,7 @@
         <div id="chatArea" style="display:none; flex:1; flex-direction:column; min-height:0;">
           <div class="chat-header">
             <button onclick="goBackToMain()" style="background:transparent;border:none;color:#fff;padding:8px;cursor:pointer;font-size:20px;margin-left:8px" title="رجوع">←</button>
-            <div id="chatHeaderAvatar" class="avatar" style="width:40px;height:40px;flex-shrink:0;overflow:hidden;display:flex;align-items:center;justify-content:center;font-size:16px;background:#2a3942"></div>
+            <div id="chatHeaderAvatar" class="avatar" style="width:40px;height:40px;flex-shrink:0;overflow:hidden;display:flex;align-items:center;justify-content:center;font-size:16px;background:#2a3942;cursor:pointer" onclick="showProfileImageLightbox()" title="عرض الصورة"></div>
             <div><span id="chatHeader">-</span><div id="headerStatus" style="font-size:12px;opacity:0.9;margin-top:2px"></div><div id="typingIndicator" style="display:none;font-size:12px;opacity:0.9;margin-top:2px"></div></div>
             <div id="chatHeaderActions" style="display:flex;align-items:center;gap:4px;margin-right:auto">
               <button id="muteChatBtn" onclick="muteCurrentChat()" style="background:transparent;border:none;color:#fff;padding:8px;cursor:pointer;font-size:18px" title="كتم">🔇</button>
@@ -222,6 +226,9 @@
           </div>
           <div class="send-area">
             <input type="file" id="fileInput" accept="image/*,video/*,audio/*,.pdf,.doc,.docx,.txt" style="display:none" onchange="onFileSelected(event)">
+            <input type="file" id="videoMsgInput" accept="video/*" style="display:none" onchange="onVideoMessageSelected(event)">
+            <button type="button" class="btn-icon" onclick="document.getElementById('videoMsgInput').click()" style="background:#075e54;color:#fff;border:none;border-radius:50%;cursor:pointer;font-size:18px" title="رسالة فيديو">🎬</button>
+            <button type="button" id="voiceMsgBtn" class="btn-icon" onclick="toggleVoiceRecording()" style="background:#075e54;color:#fff;border:none;border-radius:50%;cursor:pointer;font-size:18px" title="رسالة صوتية">🎤</button>
             <button type="button" class="btn-icon" onclick="document.getElementById('fileInput').click()" style="background:#075e54;color:#fff;border:none;border-radius:50%;cursor:pointer;font-size:18px" title="إرفاق ملف">📎</button>
             <button type="button" class="btn-icon" onclick="showGifModal()" style="background:#075e54;color:#fff;border:none;border-radius:50%;cursor:pointer;font-size:18px" title="GIF">🎞️</button>
             <button type="button" id="pollBtn" class="btn-icon" onclick="showPollModal()" style="display:none;background:#075e54;color:#fff;border:none;border-radius:50%;cursor:pointer;font-size:18px" title="استطلاع">📊</button>
@@ -418,6 +425,10 @@
         <p style="font-size:12px;color:#999;margin-top:8px">حذف للجميع متاح خلال ساعة من الإرسال فقط لرسائلك.</p>
       </div>
     </div>
+  </div>
+  <div id="imgLightbox" class="img-lightbox" onclick="if(event.target===this)closeImageLightbox()">
+    <button class="close-btn" onclick="closeImageLightbox()">✕ إغلاق</button>
+    <img id="imgLightboxImg" src="" alt="" onclick="event.stopPropagation()">
   </div>
   <div id="callModal" class="call-modal">
     <div id="callState">-</div>
@@ -866,7 +877,8 @@
       if (m.isForwarded && m.forwardedFromName) body += `<div class="forwarded-label" style="font-size:11px;color:#075e54;margin-bottom:4px">↳ من ${escapeHtml(m.forwardedFromName)}</div>`;
       if (m.replyTo) body += replyQuote(m.replyTo);
       if (m.mediaUrl) {
-        if (m.type === 'image' || m.type === 'gif') body += `<div class="media"><img src="${mediaUrl(m)}" alt="" ${m.type === 'gif' ? 'style="max-width:200px"' : ''}></div>`;
+        const mu = mediaUrl(m);
+        if (m.type === 'image' || m.type === 'gif') body += `<div class="media"><img src="${mu}" alt="" ${m.type === 'gif' ? 'style="max-width:200px;cursor:pointer"' : 'style="cursor:pointer"'} onclick="event.stopPropagation();showImageLightbox(this.src)" title="اضغط لتكبير"></div>`;
         else if (m.type === 'video') body += `<div class="media"><video src="${mediaUrl(m)}" controls></video></div>`;
         else if (m.type === 'voice') body += `<div class="media"><audio src="${mediaUrl(m)}" controls></audio></div>`;
         else body += `<div class="media"><a href="${mediaUrl(m)}" target="_blank">${escapeHtml(m.content || 'فتح الملف')}</a></div>`;
@@ -1971,6 +1983,75 @@
       } catch (e) {
         alert('فشل الرفع: ' + e.message);
       }
+    }
+    async function onVideoMessageSelected(ev) {
+      const file = ev.target.files?.[0];
+      if (!file || !currentConvId) return;
+      ev.target.value = '';
+      try {
+        const fd = new FormData();
+        fd.append('file', file);
+        const { url } = await api('/api/upload', { method: 'POST', body: fd });
+        const body = { conversationId: currentConvId, type: 'video', mediaUrl: url, content: file.name };
+        if (replyToMessage) { body.replyTo = replyToMessage._id; cancelReply(); }
+        await api('/api/messages', { method: 'POST', body: JSON.stringify(body) });
+        loadMessages();
+        loadConversations();
+      } catch (e) {
+        alert('فشل الرفع: ' + e.message);
+      }
+    }
+    let _voiceRecorder = null; let _voiceChunks = [];
+    function toggleVoiceRecording() {
+      if (!currentConvId) return;
+      if (_voiceRecorder && _voiceRecorder.state === 'recording') {
+        _voiceRecorder.stop();
+        return;
+      }
+      if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+        alert('تسجيل الصوت غير مدعوم في هذا المتصفح');
+        return;
+      }
+      navigator.mediaDevices.getUserMedia({ audio: true }).then(stream => {
+        _voiceRecorder = new MediaRecorder(stream);
+        _voiceChunks = [];
+        _voiceRecorder.ondataavailable = e => { if (e.data.size) _voiceChunks.push(e.data); };
+        _voiceRecorder.onstop = async () => {
+          stream.getTracks().forEach(t => t.stop());
+          const blob = new Blob(_voiceChunks, { type: 'audio/webm' });
+          const file = new File([blob], 'voice.webm', { type: 'audio/webm' });
+          const fd = new FormData();
+          fd.append('file', file);
+          try {
+            const { url } = await api('/api/upload', { method: 'POST', body: fd });
+            const body = { conversationId: currentConvId, type: 'voice', mediaUrl: url, content: 'رسالة صوتية' };
+            if (replyToMessage) { body.replyTo = replyToMessage._id; cancelReply(); }
+            await api('/api/messages', { method: 'POST', body: JSON.stringify(body) });
+            loadMessages();
+            loadConversations();
+          } catch (e) { alert('فشل إرسال الرسالة الصوتية: ' + e.message); }
+          const btn = document.getElementById('voiceMsgBtn');
+          if (btn) { btn.textContent = '🎤'; btn.title = 'رسالة صوتية'; }
+        };
+        _voiceRecorder.start();
+        const btn = document.getElementById('voiceMsgBtn');
+        if (btn) { btn.textContent = '⏹'; btn.title = 'إيقاف التسجيل'; }
+      }).catch(e => alert('تعذّر الوصول للميكروفون: ' + (e.message || e.name)));
+    }
+    function showImageLightbox(src) {
+      const el = document.getElementById('imgLightbox');
+      const img = document.getElementById('imgLightboxImg');
+      if (el && img) { img.src = src || ''; el.classList.add('show'); }
+    }
+    function closeImageLightbox() {
+      document.getElementById('imgLightbox')?.classList.remove('show');
+    }
+    function showProfileImageLightbox() {
+      if (!currentChatOtherUserId || currentConvIsGroup) return;
+      const conv = conversations.find(c => c._id === currentConvId);
+      const other = (conv?.participants || []).find(p => String(p._id) !== String(user._id));
+      const url = other?.profileImage ? buildProfileImageSrc(other.profileImage, true) : null;
+      if (url) showImageLightbox(url);
     }
 
     function showNewChat() {
