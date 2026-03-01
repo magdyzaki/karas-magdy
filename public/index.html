@@ -9,6 +9,9 @@
   <meta name="apple-mobile-web-app-title" content="Karas Magdy">
   <link rel="manifest" href="/manifest.json">
   <link rel="apple-touch-icon" href="/icon-192.svg">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Amiri&family=Cairo&family=Tajawal&display=swap" rel="stylesheet">
   <title>Karas Magdy | تواصل فوري</title>
   <style>
     * { box-sizing: border-box; margin: 0; padding: 0; }
@@ -224,8 +227,8 @@
               <button id="blockChatBtn" onclick="blockCurrentChatUser()" style="display:none;background:transparent;border:none;color:#fff;padding:8px;cursor:pointer;font-size:18px" title="حظر">🚫</button>
             </div>
             <div class="call-btns" id="callBtns" style="display:none">
-              <button onclick="startCall(false)" title="مكالمة صوتية">📞</button>
-              <button onclick="startCall(true)" title="مكالمة فيديو">📹</button>
+              <button onclick="startCallFromHeader(false)" title="مكالمة صوتية">📞</button>
+              <button onclick="startCallFromHeader(true)" title="مكالمة فيديو">📹</button>
             </div>
           </div>
           <div class="messages" id="messages"></div>
@@ -345,6 +348,43 @@
         </div>
       </div>
       <div style="margin-bottom:12px">
+        <label style="font-size:12px;color:#8696a0">نوع الخط</label>
+        <select id="settingsFontFamily" onchange="setFontFamily(this.value)" style="width:100%;padding:10px;margin-top:6px;border:1px solid #ddd;border-radius:6px">
+          <option value="default">افتراضي</option>
+          <option value="Segoe UI, Tahoma, sans-serif">Segoe UI</option>
+          <option value="Arial, sans-serif">Arial</option>
+          <option value="'Times New Roman', serif">Times New Roman</option>
+          <option value="Cairo, sans-serif">Cairo</option>
+          <option value="Amiri, serif">Amiri</option>
+          <option value="Tajawal, sans-serif">Tajawal</option>
+        </select>
+      </div>
+      <div style="margin-bottom:12px">
+        <label style="font-size:12px;color:#8696a0">حجم الخط</label>
+        <select id="settingsFontSize" onchange="setFontSize(this.value)" style="width:100%;padding:10px;margin-top:6px;border:1px solid #ddd;border-radius:6px">
+          <option value="default">افتراضي</option>
+          <option value="small">صغير</option>
+          <option value="medium">متوسط</option>
+          <option value="large">كبير</option>
+        </select>
+      </div>
+      <div style="margin-bottom:12px">
+        <label style="font-size:12px;color:#8696a0">لون نص الرسائل المرسلة</label>
+        <div style="display:flex;gap:8px;margin-top:6px;align-items:center">
+          <input type="color" id="settingsColorSent" value="#000000" onchange="setTextColorSent(this.value)" style="width:48px;height:36px;padding:2px;cursor:pointer;border:none;border-radius:6px">
+          <input type="text" id="settingsColorSentHex" placeholder="#000000" style="flex:1;padding:8px;border:1px solid #ddd;border-radius:6px" onchange="setTextColorSent(this.value)">
+          <button type="button" onclick="setTextColorSent('')" style="padding:8px;background:#f5f5f5;border:none;border-radius:6px;cursor:pointer" title="إعادة الافتراضي">↺</button>
+        </div>
+      </div>
+      <div style="margin-bottom:12px">
+        <label style="font-size:12px;color:#8696a0">لون نص الرسائل المستلمة</label>
+        <div style="display:flex;gap:8px;margin-top:6px;align-items:center">
+          <input type="color" id="settingsColorReceived" value="#000000" onchange="setTextColorReceived(this.value)" style="width:48px;height:36px;padding:2px;cursor:pointer;border:none;border-radius:6px">
+          <input type="text" id="settingsColorReceivedHex" placeholder="#000000" style="flex:1;padding:8px;border:1px solid #ddd;border-radius:6px" onchange="setTextColorReceived(this.value)">
+          <button type="button" onclick="setTextColorReceived('')" style="padding:8px;background:#f5f5f5;border:none;border-radius:6px;cursor:pointer" title="إعادة الافتراضي">↺</button>
+        </div>
+      </div>
+      <div style="margin-bottom:12px">
         <label style="font-size:12px;color:#8696a0">خلفية الشات (الافتراضي للمحادثات)</label>
         <div style="display:flex;flex-wrap:wrap;gap:8px;margin-top:6px" id="chatBgOptions">
           <button type="button" class="chat-bg-btn" data-bg="default" onclick="setChatBackground('default')" title="افتراضي" style="width:44px;height:44px;border-radius:8px;border:2px solid #ddd;cursor:pointer;background:#e5ddd5;background-image:url('data:image/svg+xml,%3Csvg width=\'20\' height=\'20\' xmlns=\'http://www.w3.org/2000/svg\'%3E%3Cg fill=\'%23d4d4d4\' fill-opacity=\'.3\'%3E%3Cpath d=\'M6 4h2v2H6zM12 10h2v2h-2z\'/%3E%3C/g%3E%3C/svg%3E')"></button>
@@ -376,7 +416,7 @@
     </div>
   </div>
   <div id="chatBgConvModal" class="modal" onclick="if(event.target===this)this.classList.remove('show')">
-    <div class="modal-content" style="max-width:320px">
+    <div class="modal-content" style="max-width:360px">
       <div class="modal-header"><h3 style="margin:0">🖼️ خلفية هذه المحادثة</h3><span class="modal-close" onclick="document.getElementById('chatBgConvModal').classList.remove('show')">✕</span></div>
       <div style="display:flex;flex-wrap:wrap;gap:8px;margin-bottom:12px" id="chatBgConvOptions">
         <button type="button" class="chat-bg-conv-btn" data-bg="default" onclick="setChatBgForConv('default')" title="الافتراضي" style="width:44px;height:44px;border-radius:8px;border:2px solid #ddd;cursor:pointer;background:#e5ddd5"></button>
@@ -385,7 +425,18 @@
         <button type="button" class="chat-bg-conv-btn" data-bg="green" onclick="setChatBgForConv('green')" title="أخضر" style="width:44px;height:44px;border-radius:8px;border:2px solid #ddd;cursor:pointer;background:#d4f1d4"></button>
         <button type="button" class="chat-bg-conv-btn" data-bg="purple" onclick="setChatBgForConv('purple')" title="بنفسجي" style="width:44px;height:44px;border-radius:8px;border:2px solid #ddd;cursor:pointer;background:#e8dff0"></button>
       </div>
+      <div style="margin-bottom:12px">
+        <label style="font-size:12px;color:#8696a0">أو صورة مخصصة:</label>
+        <input type="file" id="chatBgImageInput" accept="image/*" style="display:none" onchange="onChatBgImageSelected(event)">
+        <button type="button" class="new-chat-btn" style="margin-top:6px;padding:8px" onclick="document.getElementById('chatBgImageInput').click()">📷 اختيار صورة</button>
+      </div>
       <p style="font-size:12px;color:#8696a0">الافتراضي = خلفية الإعدادات العامة</p>
+    </div>
+  </div>
+  <div id="groupCallPickModal" class="modal" onclick="if(event.target===this)this.classList.remove('show')">
+    <div class="modal-content" style="max-width:360px">
+      <div class="modal-header"><h3 style="margin:0">اختر عضو للمكالمة</h3><span class="modal-close" onclick="document.getElementById('groupCallPickModal').classList.remove('show')">✕</span></div>
+      <div id="groupCallPickList" style="max-height:300px;overflow-y:auto"></div>
     </div>
   </div>
   <div id="muteModal" class="modal" onclick="if(event.target===this)this.classList.remove('show')">
@@ -697,6 +748,7 @@
         document.getElementById('myName').textContent = user.name || user.phone;
         applyTheme(safeStorage.getItem('theme') || user.themePreference || 'light');
         applyChatBackground(safeStorage.getItem('chatBackground') || user.chatBackground || 'default');
+        applyFontStyles();
         updateAdminUi();
         if (window.AudioContext || window.webkitAudioContext) { try { const ac = getAudioCtx(); if (ac.state === 'suspended') ac.resume(); } catch(_){} }
         loadStarredIds();
@@ -1105,6 +1157,22 @@
       document.querySelectorAll('.theme-btn').forEach(b => { b.style.opacity = b.dataset.theme === th ? '1' : '0.5'; });
       const bg = safeStorage.getItem('chatBackground') || user?.chatBackground || 'default';
       document.querySelectorAll('.chat-bg-btn').forEach(b => { b.style.borderColor = b.dataset.bg === bg ? '#25d366' : '#ddd'; b.style.boxShadow = b.dataset.bg === bg ? '0 0 0 2px #25d366' : 'none'; });
+      const ff = safeStorage.getItem('fontFamily') || user?.fontFamily || 'default';
+      const fs = safeStorage.getItem('fontSize') || user?.fontSize || 'default';
+      const cs = safeStorage.getItem('textColorSent') || user?.textColorSent || '';
+      const cr = safeStorage.getItem('textColorReceived') || user?.textColorReceived || '';
+      const sf = document.getElementById('settingsFontFamily');
+      const sz = document.getElementById('settingsFontSize');
+      if (sf) sf.value = ff || 'default';
+      if (sz) sz.value = fs || 'default';
+      const sentColor = document.getElementById('settingsColorSent');
+      const sentHex = document.getElementById('settingsColorSentHex');
+      const recvColor = document.getElementById('settingsColorReceived');
+      const recvHex = document.getElementById('settingsColorReceivedHex');
+      if (sentColor && cs) sentColor.value = cs.startsWith('#') ? cs : '#' + cs;
+      if (sentHex) sentHex.value = cs;
+      if (recvColor && cr) recvColor.value = cr.startsWith('#') ? cr : '#' + cr;
+      if (recvHex) recvHex.value = cr;
     }
     async function uploadAvatar(e) {
       const file = e.target.files?.[0];
@@ -1174,6 +1242,64 @@
     function applyTheme(theme) {
       document.body.classList.toggle('theme-dark', theme === 'dark');
     }
+    function setFontFamily(font) {
+      safeStorage.setItem('fontFamily', font);
+      applyFontStyles();
+      api('/api/users/profile', { method: 'PUT', body: JSON.stringify({ fontFamily: font }) }).catch(() => {});
+      const sel = document.getElementById('settingsFontFamily');
+      if (sel) sel.value = font || 'default';
+    }
+    function setFontSize(size) {
+      safeStorage.setItem('fontSize', size);
+      applyFontStyles();
+      api('/api/users/profile', { method: 'PUT', body: JSON.stringify({ fontSize: size }) }).catch(() => {});
+      const sel = document.getElementById('settingsFontSize');
+      if (sel) sel.value = size || 'default';
+    }
+    function normColor(v) {
+      const s = (v || '').trim();
+      if (!s) return '';
+      if (s.startsWith('#')) return s;
+      if (/^[0-9a-fA-F]{6}$/.test(s)) return '#' + s;
+      return s;
+    }
+    function setTextColorSent(color) {
+      const c = normColor(color);
+      safeStorage.setItem('textColorSent', c);
+      applyFontStyles();
+      api('/api/users/profile', { method: 'PUT', body: JSON.stringify({ textColorSent: c }) }).catch(() => {});
+      const inp = document.getElementById('settingsColorSent');
+      const hexSent = document.getElementById('settingsColorSentHex');
+      if (inp) inp.value = c && c.startsWith('#') ? c : '#000000';
+      if (hexSent) hexSent.value = c;
+    }
+    function setTextColorReceived(color) {
+      const c = normColor(color);
+      safeStorage.setItem('textColorReceived', c);
+      applyFontStyles();
+      api('/api/users/profile', { method: 'PUT', body: JSON.stringify({ textColorReceived: c }) }).catch(() => {});
+      const inp = document.getElementById('settingsColorReceived');
+      const hex = document.getElementById('settingsColorReceivedHex');
+      if (inp) inp.value = c && c.startsWith('#') ? c : '#000000';
+      if (hex) hex.value = c;
+    }
+    function applyFontStyles() {
+      const font = safeStorage.getItem('fontFamily') || user?.fontFamily || 'default';
+      const size = safeStorage.getItem('fontSize') || user?.fontSize || 'default';
+      const colorSent = safeStorage.getItem('textColorSent') || user?.textColorSent || '';
+      const colorReceived = safeStorage.getItem('textColorReceived') || user?.textColorReceived || '';
+      const msgs = document.getElementById('messages');
+      if (msgs) {
+        msgs.style.fontFamily = font && font !== 'default' ? font : '';
+        msgs.style.fontSize = size === 'small' ? '13px' : size === 'large' ? '17px' : size === 'medium' ? '15px' : '';
+      }
+      let st = document.getElementById('chatFontVars');
+      if (!st) { st = document.createElement('style'); st.id = 'chatFontVars'; document.head.appendChild(st); }
+      let css = '';
+      if (colorSent) css += '.msg.sent .content, .msg.sent .reply-quote, .msg.sent .forwarded-label { color: ' + colorSent + ' !important; } ';
+      if (colorReceived) css += '.msg.received .content, .msg.received .reply-quote, .msg.received .forwarded-label { color: ' + colorReceived + ' !important; } ';
+      st.textContent = css;
+    }
     function getChatBackgrounds() {
       try {
         const j = safeStorage.getItem('chat_backgrounds');
@@ -1183,7 +1309,8 @@
     function getChatBackgroundForConv(convId) {
       if (!convId) return safeStorage.getItem('chatBackground') || user?.chatBackground || 'default';
       const map = getChatBackgrounds();
-      return map[String(convId)] || safeStorage.getItem('chatBackground') || user?.chatBackground || 'default';
+      const val = map[String(convId)];
+      return val !== undefined && val !== null ? val : (safeStorage.getItem('chatBackground') || user?.chatBackground || 'default');
     }
     function setChatBackground(bg) {
       safeStorage.setItem('chatBackground', bg);
@@ -1201,19 +1328,43 @@
       else map[String(currentConvId)] = bg;
       safeStorage.setItem('chat_backgrounds', JSON.stringify(map));
       applyChatBackground(bg);
-      document.querySelectorAll('.chat-bg-conv-btn').forEach(b => { b.style.borderColor = b.dataset.bg === bg ? '#25d366' : '#ddd'; b.style.boxShadow = b.dataset.bg === bg ? '0 0 0 2px #25d366' : 'none'; });
+      const isPreset = typeof bg === 'string';
+      document.querySelectorAll('.chat-bg-conv-btn').forEach(b => { b.style.borderColor = (isPreset && b.dataset.bg === bg) ? '#25d366' : '#ddd'; b.style.boxShadow = (isPreset && b.dataset.bg === bg) ? '0 0 0 2px #25d366' : 'none'; });
       document.getElementById('chatBgConvModal')?.classList.remove('show');
+    }
+    async function onChatBgImageSelected(ev) {
+      const file = ev.target.files?.[0];
+      if (!file || !currentConvId) return;
+      ev.target.value = '';
+      const fd = new FormData();
+      fd.append('file', file);
+      try {
+        const { url } = await api('/api/upload', { method: 'POST', body: fd });
+        if (url) setChatBgForConv({ type: 'image', url: url.startsWith('http') ? url : (API + (url.startsWith('/') ? '' : '/') + url) });
+      } catch (e) { alert('فشل رفع الصورة: ' + e.message); }
     }
     function showChatBgModal() {
       if (!currentConvId) return;
       const bg = getChatBackgroundForConv(currentConvId);
-      document.querySelectorAll('.chat-bg-conv-btn').forEach(b => { b.style.borderColor = b.dataset.bg === bg ? '#25d366' : '#ddd'; b.style.boxShadow = b.dataset.bg === bg ? '0 0 0 2px #25d366' : 'none'; });
+      const isPreset = typeof bg === 'string';
+      document.querySelectorAll('.chat-bg-conv-btn').forEach(b => { b.style.borderColor = (isPreset && b.dataset.bg === bg) ? '#25d366' : (bg?.type === 'image' ? '#ddd' : (b.dataset.bg === bg ? '#25d366' : '#ddd')); b.style.boxShadow = (isPreset && b.dataset.bg === bg) ? '0 0 0 2px #25d366' : 'none'; });
       document.getElementById('chatBgConvModal').classList.add('show');
     }
     function applyChatBackground(bg) {
+      const el = document.getElementById('messages');
+      if (!el) return;
       const val = bg || 'default';
       document.body.classList.remove('chat-bg-plain', 'chat-bg-blue', 'chat-bg-green', 'chat-bg-purple');
-      if (val !== 'default') document.body.classList.add('chat-bg-' + val);
+      if (typeof val === 'object' && val?.type === 'image' && val?.url) {
+        el.style.backgroundImage = 'url(' + val.url + ')';
+        el.style.backgroundSize = 'cover';
+        el.style.backgroundPosition = 'center';
+      } else {
+        el.style.backgroundImage = '';
+        el.style.backgroundSize = '';
+        el.style.backgroundPosition = '';
+        if (typeof val === 'string' && val !== 'default') document.body.classList.add('chat-bg-' + val);
+      }
     }
     async function loadStarredIds() {
       try {
@@ -1689,9 +1840,10 @@
       currentConvIsGroup = (conv || {}).type === 'group';
       const other = (conv?.participants || []).find(p => String(p._id) !== String(user._id));
       currentChatOtherUserId = otherUserId ? String(otherUserId) : (other ? String(other._id || other) : null);
-      currentCallTargetUserId = currentChatOtherUserId;
+      currentCallTargetUserId = currentConvIsGroup ? null : currentChatOtherUserId;
       document.getElementById('pollBtn').style.display = currentConvIsGroup ? 'block' : 'none';
-      document.getElementById('callBtns').style.display = !currentConvIsGroup && currentCallTargetUserId ? 'block' : 'none';
+      const hasSomeoneToCall = currentConvIsGroup ? ((conv?.participants || []).filter(p => String(p._id||p) !== String(user._id)).length > 0) : !!currentChatOtherUserId;
+      document.getElementById('callBtns').style.display = hasSomeoneToCall ? 'block' : 'none';
       const blockBtn = document.getElementById('blockChatBtn');
       if (blockBtn) blockBtn.style.display = !currentConvIsGroup && currentChatOtherUserId ? 'inline-block' : 'none';
       document.getElementById('mainPlaceholder').style.display = 'none';
@@ -1927,6 +2079,30 @@
     }
     function isWebRTCSupported() {
       return !!(navigator.mediaDevices && navigator.mediaDevices.getUserMedia && window.RTCPeerConnection);
+    }
+    function startCallFromHeader(video) {
+      if (!currentConvId) return;
+      if (currentConvIsGroup) {
+        const conv = conversations.find(c => c._id === currentConvId);
+        const participants = conv?.participants || [];
+        const others = participants.filter(p => String(p._id || p) !== String(user._id));
+        if (!others.length) { alert('لا يوجد أعضاء آخرون في المجموعة'); return; }
+        const el = document.getElementById('groupCallPickList');
+        el.innerHTML = others.map(p => {
+          const id = String(p._id || p);
+          const name = p.name || p.phone || 'مستخدم';
+          return `<div class="search-result" onclick="pickGroupMemberForCall('${id}', ${video})" style="cursor:pointer">${escapeHtml(name)}</div>`;
+        }).join('');
+        document.getElementById('groupCallPickModal').classList.add('show');
+      } else {
+        currentCallTargetUserId = currentChatOtherUserId;
+        startCall(video);
+      }
+    }
+    function pickGroupMemberForCall(userId, video) {
+      currentCallTargetUserId = userId;
+      document.getElementById('groupCallPickModal').classList.remove('show');
+      startCall(video);
     }
     async function startCall(video) {
       if (!isWebRTCSupported()) {

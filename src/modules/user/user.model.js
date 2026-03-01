@@ -50,6 +50,10 @@ const userSchema = new mongoose.Schema(
     }],
     themePreference: { type: String, enum: ["light", "dark", "system"], default: "system" },
     chatBackground: { type: String, default: "default" },
+    fontFamily: { type: String, default: "default" },
+    fontSize: { type: String, default: "default" },
+    textColorSent: { type: String, default: "" },
+    textColorReceived: { type: String, default: "" },
   },
   {
     timestamps: true,
