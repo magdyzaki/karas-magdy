@@ -61,7 +61,7 @@ const searchUsers = async (req, res) => {
 const getMe = async (req, res) => {
   try {
     const u = await User.findById(req.user._id)
-      .select("_id name phone profileImage about themePreference")
+      .select("_id name phone profileImage about themePreference chatBackground")
       .lean();
     if (!u) return res.status(404).json({ success: false, message: "User not found" });
     res.setHeader("Cache-Control", "no-store, no-cache, must-revalidate");
@@ -90,6 +90,9 @@ const updateProfile = async (req, res) => {
     if (req.body.themePreference && ["light", "dark", "system"].includes(req.body.themePreference)) {
       user.themePreference = req.body.themePreference;
     }
+    if (req.body.chatBackground !== undefined) {
+      user.chatBackground = String(req.body.chatBackground).trim() || "default";
+    }
 
     await user.save();
 
@@ -100,7 +103,7 @@ const updateProfile = async (req, res) => {
     res.status(200).json({
       success: true,
       message: "Profile updated successfully",
-      user: user.toObject ? user.toObject() : { _id: user._id, name: user.name, profileImage: user.profileImage, about: user.about, themePreference: user.themePreference },
+      user: user.toObject ? user.toObject() : { _id: user._id, name: user.name, profileImage: user.profileImage, about: user.about, themePreference: user.themePreference, chatBackground: user.chatBackground },
     });
   } catch (error) {
     res.status(500).json({ success: false, message: error.message });

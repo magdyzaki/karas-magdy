@@ -129,6 +129,14 @@
     body.theme-dark .story-circle { background: #2a3942; color: #8696a0; }
     .theme-btn { padding: 8px 16px; border: 1px solid #ddd; border-radius: 6px; cursor: pointer; background: #f5f5f5; }
     body.theme-dark .theme-btn { background: #2a3942; border-color: #3f5059; color: #e9edef; }
+    body.chat-bg-plain .messages { background: #d9dbd5 !important; background-image: none !important; }
+    body.chat-bg-blue .messages { background: #d4e5f7 url("data:image/svg+xml,%3Csvg width='60' height='60' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='%2399c4f0' fill-opacity='0.15'%3E%3Ccircle cx='30' cy='30' r='2'/%3E%3Ccircle cx='10' cy='10' r='2'/%3E%3Ccircle cx='50' cy='50' r='2'/%3E%3C/g%3E%3C/svg%3E") !important; }
+    body.chat-bg-green .messages { background: #d4f1d4 url("data:image/svg+xml,%3Csvg width='60' height='60' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='%2378c478' fill-opacity='0.15'%3E%3Ccircle cx='30' cy='30' r='2'/%3E%3Ccircle cx='10' cy='50' r='2'/%3E%3Ccircle cx='50' cy='10' r='2'/%3E%3C/g%3E%3C/svg%3E") !important; }
+    body.chat-bg-purple .messages { background: #e8dff0 url("data:image/svg+xml,%3Csvg width='60' height='60' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='%23b8a0c8' fill-opacity='0.15'%3E%3Ccircle cx='30' cy='30' r='2'/%3E%3Ccircle cx='15' cy='15' r='2'/%3E%3Ccircle cx='45' cy='45' r='2'/%3E%3C/g%3E%3C/svg%3E") !important; }
+    body.theme-dark .chat-bg-plain .messages { background: #0b141a !important; background-image: none !important; }
+    body.theme-dark .chat-bg-blue .messages { background: #0d1922 url("data:image/svg+xml,%3Csvg width='60' height='60' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='%232a4a6a' fill-opacity='0.3'%3E%3Ccircle cx='30' cy='30' r='2'/%3E%3C/g%3E%3C/svg%3E") !important; }
+    body.theme-dark .chat-bg-green .messages { background: #0d1a12 url("data:image/svg+xml,%3Csvg width='60' height='60' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='%232a4a3a' fill-opacity='0.3'%3E%3Ccircle cx='30' cy='30' r='2'/%3E%3C/g%3E%3C/svg%3E") !important; }
+    body.theme-dark .chat-bg-purple .messages { background: #1a0d1a url("data:image/svg+xml,%3Csvg width='60' height='60' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='%234a2a4a' fill-opacity='0.3'%3E%3Ccircle cx='30' cy='30' r='2'/%3E%3C/g%3E%3C/svg%3E") !important; }
     .img-lightbox { position: fixed; inset: 0; background: rgba(0,0,0,0.9); z-index: 300; display: none; align-items: center; justify-content: center; padding: 16px; }
     .img-lightbox.show { display: flex; }
     .img-lightbox img { max-width: 100%; max-height: 100%; object-fit: contain; cursor: pointer; }
@@ -211,6 +219,7 @@
             <div id="chatHeaderAvatar" class="avatar" style="width:40px;height:40px;flex-shrink:0;overflow:hidden;display:flex;align-items:center;justify-content:center;font-size:16px;background:#2a3942;cursor:pointer" onclick="showProfileImageLightbox()" title="عرض الصورة"></div>
             <div><span id="chatHeader">-</span><div id="headerStatus" style="font-size:12px;opacity:0.9;margin-top:2px"></div><div id="typingIndicator" style="display:none;font-size:12px;opacity:0.9;margin-top:2px"></div></div>
             <div id="chatHeaderActions" style="display:flex;align-items:center;gap:4px;margin-right:auto">
+              <button id="chatBgBtn" onclick="showChatBgModal()" style="background:transparent;border:none;color:#fff;padding:8px;cursor:pointer;font-size:18px" title="خلفية المحادثة">🖼️</button>
               <button id="muteChatBtn" onclick="muteCurrentChat()" style="background:transparent;border:none;color:#fff;padding:8px;cursor:pointer;font-size:18px" title="كتم">🔇</button>
               <button id="blockChatBtn" onclick="blockCurrentChatUser()" style="display:none;background:transparent;border:none;color:#fff;padding:8px;cursor:pointer;font-size:18px" title="حظر">🚫</button>
             </div>
@@ -335,6 +344,16 @@
           <button type="button" class="theme-btn" data-theme="dark" onclick="setTheme('dark')">🌙 داكن</button>
         </div>
       </div>
+      <div style="margin-bottom:12px">
+        <label style="font-size:12px;color:#8696a0">خلفية الشات (الافتراضي للمحادثات)</label>
+        <div style="display:flex;flex-wrap:wrap;gap:8px;margin-top:6px" id="chatBgOptions">
+          <button type="button" class="chat-bg-btn" data-bg="default" onclick="setChatBackground('default')" title="افتراضي" style="width:44px;height:44px;border-radius:8px;border:2px solid #ddd;cursor:pointer;background:#e5ddd5;background-image:url('data:image/svg+xml,%3Csvg width=\'20\' height=\'20\' xmlns=\'http://www.w3.org/2000/svg\'%3E%3Cg fill=\'%23d4d4d4\' fill-opacity=\'.3\'%3E%3Cpath d=\'M6 4h2v2H6zM12 10h2v2h-2z\'/%3E%3C/g%3E%3C/svg%3E')"></button>
+          <button type="button" class="chat-bg-btn" data-bg="plain" onclick="setChatBackground('plain')" title="سادة" style="width:44px;height:44px;border-radius:8px;border:2px solid #ddd;cursor:pointer;background:#d9dbd5"></button>
+          <button type="button" class="chat-bg-btn" data-bg="blue" onclick="setChatBackground('blue')" title="أزرق" style="width:44px;height:44px;border-radius:8px;border:2px solid #ddd;cursor:pointer;background:#d4e5f7"></button>
+          <button type="button" class="chat-bg-btn" data-bg="green" onclick="setChatBackground('green')" title="أخضر" style="width:44px;height:44px;border-radius:8px;border:2px solid #ddd;cursor:pointer;background:#d4f1d4"></button>
+          <button type="button" class="chat-bg-btn" data-bg="purple" onclick="setChatBackground('purple')" title="بنفسجي" style="width:44px;height:44px;border-radius:8px;border:2px solid #ddd;cursor:pointer;background:#e8dff0"></button>
+        </div>
+      </div>
       <button class="new-chat-btn" onclick="syncContactsFromPhone()" style="margin-bottom:8px">📇 ربط أسماء من جهات الاتصال</button>
       <button class="new-chat-btn" onclick="showStarredModal()" style="margin-bottom:8px">⭐ الرسائل المفضلة</button>
       <button class="new-chat-btn" onclick="showBlockedList()" style="margin-bottom:8px">قائمة المحظورين</button>
@@ -354,6 +373,19 @@
       <input type="text" id="msgSearchInput" placeholder="ابحث في رسائلك..." oninput="onMsgSearchInput()" style="margin-bottom:8px">
       <label style="font-size:13px;display:flex;align-items:center;gap:8px;margin-bottom:12px"><input type="checkbox" id="msgSearchInCurrent" checked> في المحادثة الحالية فقط</label>
       <div id="msgSearchResults" style="max-height:360px;overflow-y:auto"></div>
+    </div>
+  </div>
+  <div id="chatBgConvModal" class="modal" onclick="if(event.target===this)this.classList.remove('show')">
+    <div class="modal-content" style="max-width:320px">
+      <div class="modal-header"><h3 style="margin:0">🖼️ خلفية هذه المحادثة</h3><span class="modal-close" onclick="document.getElementById('chatBgConvModal').classList.remove('show')">✕</span></div>
+      <div style="display:flex;flex-wrap:wrap;gap:8px;margin-bottom:12px" id="chatBgConvOptions">
+        <button type="button" class="chat-bg-conv-btn" data-bg="default" onclick="setChatBgForConv('default')" title="الافتراضي" style="width:44px;height:44px;border-radius:8px;border:2px solid #ddd;cursor:pointer;background:#e5ddd5"></button>
+        <button type="button" class="chat-bg-conv-btn" data-bg="plain" onclick="setChatBgForConv('plain')" title="سادة" style="width:44px;height:44px;border-radius:8px;border:2px solid #ddd;cursor:pointer;background:#d9dbd5"></button>
+        <button type="button" class="chat-bg-conv-btn" data-bg="blue" onclick="setChatBgForConv('blue')" title="أزرق" style="width:44px;height:44px;border-radius:8px;border:2px solid #ddd;cursor:pointer;background:#d4e5f7"></button>
+        <button type="button" class="chat-bg-conv-btn" data-bg="green" onclick="setChatBgForConv('green')" title="أخضر" style="width:44px;height:44px;border-radius:8px;border:2px solid #ddd;cursor:pointer;background:#d4f1d4"></button>
+        <button type="button" class="chat-bg-conv-btn" data-bg="purple" onclick="setChatBgForConv('purple')" title="بنفسجي" style="width:44px;height:44px;border-radius:8px;border:2px solid #ddd;cursor:pointer;background:#e8dff0"></button>
+      </div>
+      <p style="font-size:12px;color:#8696a0">الافتراضي = خلفية الإعدادات العامة</p>
     </div>
   </div>
   <div id="muteModal" class="modal" onclick="if(event.target===this)this.classList.remove('show')">
@@ -664,6 +696,7 @@
         document.getElementById('chatView').style.display = 'flex';
         document.getElementById('myName').textContent = user.name || user.phone;
         applyTheme(safeStorage.getItem('theme') || user.themePreference || 'light');
+        applyChatBackground(safeStorage.getItem('chatBackground') || user.chatBackground || 'default');
         updateAdminUi();
         if (window.AudioContext || window.webkitAudioContext) { try { const ac = getAudioCtx(); if (ac.state === 'suspended') ac.resume(); } catch(_){} }
         loadStarredIds();
@@ -1070,6 +1103,8 @@
       }
       const th = safeStorage.getItem('theme') || user?.themePreference || 'light';
       document.querySelectorAll('.theme-btn').forEach(b => { b.style.opacity = b.dataset.theme === th ? '1' : '0.5'; });
+      const bg = safeStorage.getItem('chatBackground') || user?.chatBackground || 'default';
+      document.querySelectorAll('.chat-bg-btn').forEach(b => { b.style.borderColor = b.dataset.bg === bg ? '#25d366' : '#ddd'; b.style.boxShadow = b.dataset.bg === bg ? '0 0 0 2px #25d366' : 'none'; });
     }
     async function uploadAvatar(e) {
       const file = e.target.files?.[0];
@@ -1138,6 +1173,47 @@
     }
     function applyTheme(theme) {
       document.body.classList.toggle('theme-dark', theme === 'dark');
+    }
+    function getChatBackgrounds() {
+      try {
+        const j = safeStorage.getItem('chat_backgrounds');
+        return j ? JSON.parse(j) : {};
+      } catch (_) { return {}; }
+    }
+    function getChatBackgroundForConv(convId) {
+      if (!convId) return safeStorage.getItem('chatBackground') || user?.chatBackground || 'default';
+      const map = getChatBackgrounds();
+      return map[String(convId)] || safeStorage.getItem('chatBackground') || user?.chatBackground || 'default';
+    }
+    function setChatBackground(bg) {
+      safeStorage.setItem('chatBackground', bg);
+      if (currentConvId) {
+        const bgForConv = getChatBackgroundForConv(currentConvId);
+        applyChatBackground(bgForConv === 'default' || !getChatBackgrounds()[String(currentConvId)] ? bg : bgForConv);
+      } else applyChatBackground(bg);
+      document.querySelectorAll('.chat-bg-btn').forEach(b => { b.style.borderColor = b.dataset.bg === bg ? '#25d366' : '#ddd'; b.style.boxShadow = b.dataset.bg === bg ? '0 0 0 2px #25d366' : 'none'; });
+      api('/api/users/profile', { method: 'PUT', body: JSON.stringify({ chatBackground: bg }) }).catch(() => {});
+    }
+    function setChatBgForConv(bg) {
+      if (!currentConvId) return;
+      const map = getChatBackgrounds();
+      if (bg === 'default') delete map[String(currentConvId)];
+      else map[String(currentConvId)] = bg;
+      safeStorage.setItem('chat_backgrounds', JSON.stringify(map));
+      applyChatBackground(bg);
+      document.querySelectorAll('.chat-bg-conv-btn').forEach(b => { b.style.borderColor = b.dataset.bg === bg ? '#25d366' : '#ddd'; b.style.boxShadow = b.dataset.bg === bg ? '0 0 0 2px #25d366' : 'none'; });
+      document.getElementById('chatBgConvModal')?.classList.remove('show');
+    }
+    function showChatBgModal() {
+      if (!currentConvId) return;
+      const bg = getChatBackgroundForConv(currentConvId);
+      document.querySelectorAll('.chat-bg-conv-btn').forEach(b => { b.style.borderColor = b.dataset.bg === bg ? '#25d366' : '#ddd'; b.style.boxShadow = b.dataset.bg === bg ? '0 0 0 2px #25d366' : 'none'; });
+      document.getElementById('chatBgConvModal').classList.add('show');
+    }
+    function applyChatBackground(bg) {
+      const val = bg || 'default';
+      document.body.classList.remove('chat-bg-plain', 'chat-bg-blue', 'chat-bg-green', 'chat-bg-purple');
+      if (val !== 'default') document.body.classList.add('chat-bg-' + val);
     }
     async function loadStarredIds() {
       try {
@@ -1630,6 +1706,7 @@
       }
       updateHeaderStatus();
       renderConvList();
+      applyChatBackground(getChatBackgroundForConv(id));
       loadMessages();
     }
 

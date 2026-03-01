@@ -49,6 +49,7 @@ const userSchema = new mongoose.Schema(
       mutedUntil: { type: Date, default: null },
     }],
     themePreference: { type: String, enum: ["light", "dark", "system"], default: "system" },
+    chatBackground: { type: String, default: "default" },
   },
   {
     timestamps: true,
