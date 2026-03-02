@@ -61,7 +61,7 @@ const searchUsers = async (req, res) => {
 const getMe = async (req, res) => {
   try {
     const u = await User.findById(req.user._id)
-      .select("_id name phone profileImage about themePreference chatBackground fontFamily fontSize textColorSent textColorReceived")
+      .select("_id name phone profileImage about themePreference chatBackground fontFamily fontSize textColorSent textColorReceived notificationSound")
       .lean();
     if (!u) return res.status(404).json({ success: false, message: "User not found" });
     res.setHeader("Cache-Control", "no-store, no-cache, must-revalidate");
@@ -97,6 +97,9 @@ const updateProfile = async (req, res) => {
     if (req.body.fontSize !== undefined) user.fontSize = String(req.body.fontSize || "default");
     if (req.body.textColorSent !== undefined) user.textColorSent = String(req.body.textColorSent || "");
     if (req.body.textColorReceived !== undefined) user.textColorReceived = String(req.body.textColorReceived || "");
+    if (req.body.notificationSound !== undefined && ["default", "high", "double", "strong"].includes(req.body.notificationSound)) {
+      user.notificationSound = req.body.notificationSound;
+    }
 
     await user.save();
 
@@ -107,7 +110,7 @@ const updateProfile = async (req, res) => {
     res.status(200).json({
       success: true,
       message: "Profile updated successfully",
-      user: user.toObject ? user.toObject() : { _id: user._id, name: user.name, profileImage: user.profileImage, about: user.about, themePreference: user.themePreference, chatBackground: user.chatBackground, fontFamily: user.fontFamily, fontSize: user.fontSize, textColorSent: user.textColorSent, textColorReceived: user.textColorReceived },
+      user: user.toObject ? user.toObject() : { _id: user._id, name: user.name, profileImage: user.profileImage, about: user.about, themePreference: user.themePreference, chatBackground: user.chatBackground, fontFamily: user.fontFamily, fontSize: user.fontSize, textColorSent: user.textColorSent, textColorReceived: user.textColorReceived, notificationSound: user.notificationSound },
     });
   } catch (error) {
     res.status(500).json({ success: false, message: error.message });

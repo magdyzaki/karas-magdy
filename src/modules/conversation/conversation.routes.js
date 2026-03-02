@@ -8,6 +8,7 @@ const {
   getGroupInfo,
   addMembers,
   removeMember,
+  setConversationBackground,
 } = require("./conversation.controller");
 
 router.use(protect);
@@ -18,5 +19,6 @@ router.get("/", getMyConversations);
 router.get("/:id/info", getGroupInfo);
 router.put("/:id/members", addMembers);
 router.delete("/:id/members", removeMember);
+router.put("/:id/background", setConversationBackground);
 
 module.exports = router;

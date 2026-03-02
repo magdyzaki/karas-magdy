@@ -31,6 +31,10 @@ const conversationSchema = new mongoose.Schema(
       type: String,
       default: "",
     },
+    background: {
+      type: mongoose.Schema.Types.Mixed,
+      default: "default",
+    },
   },
   {
     timestamps: true,

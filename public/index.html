@@ -125,6 +125,7 @@
     body.theme-dark .chat-header { background: #202c33; }
     body.theme-dark .messages { background: #0b141a; }
     body.theme-dark .msg.received { background: #202c33; }
+    body.theme-dark .msg.received .content, body.theme-dark .msg.received .reply-quote, body.theme-dark .msg.received .forwarded-label { color: #e9edef !important; }
     body.theme-dark .send-area { background: #202c33; }
     body.theme-dark .modal-content { background: #202c33; color: #e9edef; }
     body.theme-dark .modal-content input { background: #2a3942; border-color: #3f5059; color: #e9edef; }
@@ -238,8 +239,6 @@
           </div>
           <div class="send-area">
             <input type="file" id="fileInput" accept="image/*,video/*,audio/*,.pdf,.doc,.docx,.txt" style="display:none" onchange="onFileSelected(event)">
-            <input type="file" id="videoMsgInput" accept="video/*" style="display:none" onchange="onVideoMessageSelected(event)">
-            <button type="button" class="btn-icon" onclick="document.getElementById('videoMsgInput').click()" style="background:#075e54;color:#fff;border:none;border-radius:50%;cursor:pointer;font-size:18px" title="رسالة فيديو">🎬</button>
             <button type="button" id="voiceMsgBtn" class="btn-icon" onclick="toggleVoiceRecording()" style="background:#075e54;color:#fff;border:none;border-radius:50%;cursor:pointer;font-size:18px" title="رسالة صوتية">🎤</button>
             <button type="button" class="btn-icon" onclick="document.getElementById('fileInput').click()" style="background:#075e54;color:#fff;border:none;border-radius:50%;cursor:pointer;font-size:18px" title="إرفاق ملف">📎</button>
             <button type="button" class="btn-icon" onclick="showGifModal()" style="background:#075e54;color:#fff;border:none;border-radius:50%;cursor:pointer;font-size:18px" title="GIF">🎞️</button>
@@ -383,6 +382,15 @@
           <input type="text" id="settingsColorReceivedHex" placeholder="#000000" style="flex:1;padding:8px;border:1px solid #ddd;border-radius:6px" onchange="setTextColorReceived(this.value)">
           <button type="button" onclick="setTextColorReceived('')" style="padding:8px;background:#f5f5f5;border:none;border-radius:6px;cursor:pointer" title="إعادة الافتراضي">↺</button>
         </div>
+      </div>
+      <div style="margin-bottom:12px">
+        <label style="font-size:12px;color:#8696a0">نغمة تنبيه الرسائل</label>
+        <select id="settingsNotificationSound" onchange="setNotificationSound(this.value)" style="width:100%;padding:10px;margin-top:6px;border:1px solid #ddd;border-radius:6px">
+          <option value="default">افتراضي (أعلى)</option>
+          <option value="high">عالي</option>
+          <option value="double">مزدوج</option>
+          <option value="strong">قوي</option>
+        </select>
       </div>
       <div style="margin-bottom:12px">
         <label style="font-size:12px;color:#8696a0">خلفية الشات (الافتراضي للمحادثات)</label>
@@ -627,20 +635,33 @@
       if (!_audioCtx) _audioCtx = new (window.AudioContext || window.webkitAudioContext)();
       return _audioCtx;
     }
+    const SOUND_PRESETS = {
+      default: { freq: 800, gain: 0.4, dur: 0.15 },
+      high: { freq: 1200, gain: 0.5, dur: 0.2 },
+      double: { freq: 900, gain: 0.45, dur: 0.1, count: 2 },
+      strong: { freq: 700, gain: 0.55, dur: 0.25 }
+    };
     function playMessageSound() {
       try {
+        const preset = SOUND_PRESETS[safeStorage.getItem('notificationSound') || 'default'] || SOUND_PRESETS.default;
         const ctx = getAudioCtx();
         if (ctx.state === 'suspended') ctx.resume();
-        const osc = ctx.createOscillator();
-        const gain = ctx.createGain();
-        osc.connect(gain);
-        gain.connect(ctx.destination);
-        osc.frequency.value = 800;
-        osc.type = 'sine';
-        gain.gain.setValueAtTime(0.15, ctx.currentTime);
-        gain.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + 0.15);
-        osc.start(ctx.currentTime);
-        osc.stop(ctx.currentTime + 0.15);
+        const playBeep = () => {
+          const osc = ctx.createOscillator();
+          const gain = ctx.createGain();
+          osc.connect(gain);
+          gain.connect(ctx.destination);
+          osc.frequency.value = preset.freq;
+          osc.type = 'sine';
+          gain.gain.setValueAtTime(preset.gain, ctx.currentTime);
+          gain.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + preset.dur);
+          osc.start(ctx.currentTime);
+          osc.stop(ctx.currentTime + preset.dur);
+        };
+        if (preset.count === 2) {
+          playBeep();
+          setTimeout(playBeep, 150);
+        } else playBeep();
       } catch (_) {}
     }
     function playCallRingtone() {
@@ -912,6 +933,11 @@
           }
         });
       });
+      socket.on('conversation_background_updated', ({ conversationId, background }) => {
+        const c = conversations.find(x => String(x._id) === String(conversationId));
+        if (c) c.background = background;
+        if (currentConvId === conversationId) applyChatBackground(background);
+      });
     }
 
     function formatLastSeen(dateStr) {
@@ -1117,7 +1143,11 @@
       try {
         const res = await api('/api/users/me', { cache: 'no-store' });
         const fresh = res?.user || res?.data?.user;
-        if (fresh) { user = { ...user, ...fresh }; safeStorage.setItem('chat_user', JSON.stringify(user)); }
+        if (fresh) {
+          user = { ...user, ...fresh };
+          safeStorage.setItem('chat_user', JSON.stringify(user));
+          if (fresh.notificationSound) safeStorage.setItem('notificationSound', fresh.notificationSound);
+        }
       } catch (_) {}
       document.getElementById('settingsModal').classList.add('show');
       document.getElementById('settingsName').value = user?.name || '';
@@ -1173,6 +1203,16 @@
       if (sentHex) sentHex.value = cs;
       if (recvColor && cr) recvColor.value = cr.startsWith('#') ? cr : '#' + cr;
       if (recvHex) recvHex.value = cr;
+      const ns = safeStorage.getItem('notificationSound') || user?.notificationSound || 'default';
+      const nsSel = document.getElementById('settingsNotificationSound');
+      if (nsSel) nsSel.value = ns;
+    }
+    function setNotificationSound(value) {
+      const v = ['default','high','double','strong'].includes(value) ? value : 'default';
+      safeStorage.setItem('notificationSound', v);
+      api('/api/users/profile', { method: 'PUT', body: JSON.stringify({ notificationSound: v }) }).catch(() => {});
+      const sel = document.getElementById('settingsNotificationSound');
+      if (sel) sel.value = v;
     }
     async function uploadAvatar(e) {
       const file = e.target.files?.[0];
@@ -1308,6 +1348,8 @@
     }
     function getChatBackgroundForConv(convId) {
       if (!convId) return safeStorage.getItem('chatBackground') || user?.chatBackground || 'default';
+      const c = conversations.find(x => String(x._id) === String(convId));
+      if (c?.background !== undefined && c.background !== null) return c.background;
       const map = getChatBackgrounds();
       const val = map[String(convId)];
       return val !== undefined && val !== null ? val : (safeStorage.getItem('chatBackground') || user?.chatBackground || 'default');
@@ -1321,13 +1363,21 @@
       document.querySelectorAll('.chat-bg-btn').forEach(b => { b.style.borderColor = b.dataset.bg === bg ? '#25d366' : '#ddd'; b.style.boxShadow = b.dataset.bg === bg ? '0 0 0 2px #25d366' : 'none'; });
       api('/api/users/profile', { method: 'PUT', body: JSON.stringify({ chatBackground: bg }) }).catch(() => {});
     }
-    function setChatBgForConv(bg) {
+    async function setChatBgForConv(bg) {
       if (!currentConvId) return;
-      const map = getChatBackgrounds();
-      if (bg === 'default') delete map[String(currentConvId)];
-      else map[String(currentConvId)] = bg;
-      safeStorage.setItem('chat_backgrounds', JSON.stringify(map));
-      applyChatBackground(bg);
+      try {
+        const payload = bg === 'default' ? { background: 'default' } : (typeof bg === 'object' && bg?.type === 'image') ? { background: bg } : { background: bg };
+        await api('/api/conversations/' + currentConvId + '/background', { method: 'PUT', body: JSON.stringify(payload) });
+        const c = conversations.find(x => String(x._id) === String(currentConvId));
+        if (c) c.background = bg === 'default' ? 'default' : bg;
+        applyChatBackground(bg);
+      } catch (e) {
+        const map = getChatBackgrounds();
+        if (bg === 'default') delete map[String(currentConvId)];
+        else map[String(currentConvId)] = bg;
+        safeStorage.setItem('chat_backgrounds', JSON.stringify(map));
+        applyChatBackground(bg);
+      }
       const isPreset = typeof bg === 'string';
       document.querySelectorAll('.chat-bg-conv-btn').forEach(b => { b.style.borderColor = (isPreset && b.dataset.bg === bg) ? '#25d366' : '#ddd'; b.style.boxShadow = (isPreset && b.dataset.bg === bg) ? '0 0 0 2px #25d366' : 'none'; });
       document.getElementById('chatBgConvModal')?.classList.remove('show');

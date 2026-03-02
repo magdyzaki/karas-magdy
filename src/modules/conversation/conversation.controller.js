@@ -362,6 +362,71 @@ const removeMember = async (req, res) => {
   }
 };
 
+/**
+ * تحديث خلفية محادثة (تزامن بين الطرفين)
+ */
+const setConversationBackground = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { background } = req.body;
+
+    const conversation = await Conversation.findById(id);
+
+    if (!conversation) {
+      return res.status(404).json({
+        success: false,
+        message: "Conversation not found",
+      });
+    }
+
+    const isParticipant = conversation.participants.some(
+      (p) => p.toString() === req.user._id.toString()
+    );
+
+    if (!isParticipant) {
+      return res.status(403).json({
+        success: false,
+        message: "You are not a participant in this conversation",
+      });
+    }
+
+    // قبول string (ألوان) أو object { type: 'image', url: '...' }
+    let newBg = "default";
+    if (background === "default" || background === null || background === undefined) {
+      newBg = "default";
+    } else if (typeof background === "string") {
+      newBg = background;
+    } else if (background && typeof background === "object" && background.type === "image" && background.url) {
+      newBg = { type: "image", url: String(background.url) };
+    }
+
+    conversation.background = newBg;
+    await conversation.save();
+
+    // إشعار جميع المشاركين بتحديث الخلفية
+    const io = req.app.get("io");
+    if (io) {
+      conversation.participants.forEach((p) => {
+        const userId = p.toString();
+        io.to(`user:${userId}`).emit("conversation_background_updated", {
+          conversationId: id,
+          background: newBg,
+        });
+      });
+    }
+
+    res.status(200).json({
+      success: true,
+      conversation: { _id: conversation._id, background: newBg },
+    });
+  } catch (error) {
+    res.status(500).json({
+      success: false,
+      message: error.message,
+    });
+  }
+};
+
 module.exports = {
   createOrGetConversation,
   getMyConversations,
@@ -369,4 +434,5 @@ module.exports = {
   getGroupInfo,
   addMembers,
   removeMember,
+  setConversationBackground,
 };
