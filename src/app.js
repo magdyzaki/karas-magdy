@@ -19,6 +19,7 @@ app.use(express.static(path.join(__dirname, "../public")));
 app.use("/uploads", express.static(path.join(__dirname, "../uploads")));
 
 app.use("/health", healthRoute);
+app.use("/api/health", healthRoute);
 app.use("/api/upload", require("./routes/upload.route"));
 app.use("/api/proxy-image", require("./routes/proxy-image.route"));
 app.use("/api/auth", authRoutes);
