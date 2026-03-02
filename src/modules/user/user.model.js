@@ -54,7 +54,7 @@ const userSchema = new mongoose.Schema(
     fontSize: { type: String, default: "default" },
     textColorSent: { type: String, default: "" },
     textColorReceived: { type: String, default: "" },
-    notificationSound: { type: String, enum: ["default", "high", "double", "strong"], default: "default" },
+    notificationSound: { type: String, default: "default" },
   },
   {
     timestamps: true,

@@ -385,12 +385,15 @@
       </div>
       <div style="margin-bottom:12px">
         <label style="font-size:12px;color:#8696a0">نغمة تنبيه الرسائل</label>
-        <select id="settingsNotificationSound" onchange="setNotificationSound(this.value)" style="width:100%;padding:10px;margin-top:6px;border:1px solid #ddd;border-radius:6px">
-          <option value="default">افتراضي (أعلى)</option>
+        <select id="settingsNotificationSound" onchange="onNotificationSoundChange(this.value)" style="width:100%;padding:10px;margin-top:6px;border:1px solid #ddd;border-radius:6px">
+          <option value="default">افتراضي</option>
           <option value="high">عالي</option>
           <option value="double">مزدوج</option>
           <option value="strong">قوي</option>
+          <option value="custom">اختر من الجهاز</option>
         </select>
+        <input type="file" id="notificationSoundFileInput" accept="audio/*" style="display:none">
+        <p id="notificationSoundCustomLabel" style="font-size:11px;color:#25d366;margin-top:4px;display:none"></p>
       </div>
       <div style="margin-bottom:12px">
         <label style="font-size:12px;color:#8696a0">خلفية الشات (الافتراضي للمحادثات)</label>
@@ -643,7 +646,17 @@
     };
     function playMessageSound() {
       try {
-        const preset = SOUND_PRESETS[safeStorage.getItem('notificationSound') || 'default'] || SOUND_PRESETS.default;
+        const ns = safeStorage.getItem('notificationSound') || 'default';
+        if (typeof ns === 'string' && ns.startsWith('{')) {
+          const obj = JSON.parse(ns);
+          if (obj?.type === 'custom' && obj?.url) {
+            const a = new Audio(obj.url);
+            a.volume = 0.7;
+            a.play().catch(() => {});
+            return;
+          }
+        }
+        const preset = SOUND_PRESETS[ns] || SOUND_PRESETS.default;
         const ctx = getAudioCtx();
         if (ctx.state === 'suspended') ctx.resume();
         const playBeep = () => {
@@ -1205,14 +1218,52 @@
       if (recvHex) recvHex.value = cr;
       const ns = safeStorage.getItem('notificationSound') || user?.notificationSound || 'default';
       const nsSel = document.getElementById('settingsNotificationSound');
-      if (nsSel) nsSel.value = ns;
+      const customLabel = document.getElementById('notificationSoundCustomLabel');
+      if (nsSel) nsSel.value = (typeof ns === 'string' && ns.startsWith('{')) ? 'custom' : (['default','high','double','strong','custom'].includes(String(ns)) ? String(ns) : 'default');
+      if (customLabel) customLabel.style.display = (typeof ns === 'string' && ns.startsWith('{')) ? 'block' : 'none';
+      if (customLabel && ns && ns.startsWith('{')) customLabel.textContent = '✓ نغمة مخصصة';
+    }
+    function onNotificationSoundChange(value) {
+      if (value === 'custom') {
+        const inp = document.getElementById('notificationSoundFileInput');
+        if (inp) { inp.value = ''; inp.onchange = onNotificationSoundFileSelected; inp.click(); }
+      } else {
+        setNotificationSound(value);
+      }
+    }
+    async function onNotificationSoundFileSelected(ev) {
+      const file = ev?.target?.files?.[0];
+      if (!file) {
+        const stored = safeStorage.getItem('notificationSound') || 'default';
+        const sel = document.getElementById('settingsNotificationSound');
+        sel.value = (typeof stored === 'string' && stored.startsWith('{')) ? 'custom' : (['default','high','double','strong'].includes(stored) ? stored : 'default');
+        return;
+      }
+      const fd = new FormData();
+      fd.append('file', file);
+      try {
+        const { url } = await api('/api/upload', { method: 'POST', body: fd });
+        if (!url) throw new Error('لم يتم رفع الملف');
+        const fullUrl = url.startsWith('http') ? url : (API + (url.startsWith('/') ? '' : '/') + url);
+        const payload = JSON.stringify({ type: 'custom', url: fullUrl });
+        setNotificationSound(payload);
+        const customLabel = document.getElementById('notificationSoundCustomLabel');
+        if (customLabel) { customLabel.style.display = 'block'; customLabel.textContent = '✓ نغمة مخصصة'; }
+      } catch (e) {
+        alert('فشل رفع النغمة: ' + (e.message || 'خطأ'));
+        document.getElementById('settingsNotificationSound').value = 'default';
+      }
+      ev.target.value = '';
     }
     function setNotificationSound(value) {
-      const v = ['default','high','double','strong'].includes(value) ? value : 'default';
+      const preset = ['default','high','double','strong'];
+      const v = preset.includes(value) ? value : (typeof value === 'string' && value.startsWith('{') ? value : 'default');
       safeStorage.setItem('notificationSound', v);
       api('/api/users/profile', { method: 'PUT', body: JSON.stringify({ notificationSound: v }) }).catch(() => {});
       const sel = document.getElementById('settingsNotificationSound');
-      if (sel) sel.value = v;
+      if (sel) sel.value = preset.includes(v) ? v : 'custom';
+      const customLabel = document.getElementById('notificationSoundCustomLabel');
+      if (customLabel) { customLabel.style.display = (v === 'custom' || v.startsWith?.('{')) ? 'block' : 'none'; customLabel.textContent = (v === 'custom' || v.startsWith?.('{')) ? '✓ نغمة مخصصة' : ''; }
     }
     async function uploadAvatar(e) {
       const file = e.target.files?.[0];

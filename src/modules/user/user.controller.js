@@ -97,8 +97,18 @@ const updateProfile = async (req, res) => {
     if (req.body.fontSize !== undefined) user.fontSize = String(req.body.fontSize || "default");
     if (req.body.textColorSent !== undefined) user.textColorSent = String(req.body.textColorSent || "");
     if (req.body.textColorReceived !== undefined) user.textColorReceived = String(req.body.textColorReceived || "");
-    if (req.body.notificationSound !== undefined && ["default", "high", "double", "strong"].includes(req.body.notificationSound)) {
-      user.notificationSound = req.body.notificationSound;
+    if (req.body.notificationSound !== undefined) {
+      const ns = req.body.notificationSound;
+      if (["default", "high", "double", "strong"].includes(ns)) {
+        user.notificationSound = ns;
+      } else if (typeof ns === "string") {
+        try {
+          const parsed = JSON.parse(ns);
+          if (parsed?.type === "custom" && typeof parsed?.url === "string" && parsed.url) {
+            user.notificationSound = ns;
+          }
+        } catch (_) {}
+      }
     }
 
     await user.save();
